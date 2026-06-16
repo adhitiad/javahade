@@ -64,3 +64,4 @@ func (s *PresenceService) GetOnlineUsers(ctx context.Context) ([]string, error) 
 func (s *PresenceService) Heartbeat(ctx context.Context, userID string) error {
 	return s.SetOnline(ctx, userID)
 }
+

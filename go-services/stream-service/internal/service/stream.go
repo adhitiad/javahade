@@ -153,3 +153,4 @@ func (s *StreamService) DecrementViewers(ctx context.Context, streamID string) (
 	}
 	return count, nil
 }
+

@@ -9,7 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 
-	sharedDB "github.com/kreativa/shared/database"
+	sharedDB "github.com/adhitiad/javahade/shared/database"
 )
 
 // SagaWorker bertanggung jawab untuk mendengarkan balasan dari Python Payment Service
@@ -98,3 +98,4 @@ func (w *SagaWorker) handleEvent(event sharedDB.StreamEvent) error {
 
 	return nil
 }
+

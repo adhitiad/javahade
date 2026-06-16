@@ -515,3 +515,4 @@ func (c *Client) WritePump() {
 		}
 	}
 }
+

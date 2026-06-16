@@ -53,3 +53,4 @@ func Load() *Config {
 func Addr(port int) string {
 	return fmt.Sprintf(":%d", port)
 }
+

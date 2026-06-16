@@ -13,8 +13,8 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog/log"
 
-	sharedMW "github.com/kreativa/shared/middleware"
-	wsUpgrader "github.com/kreativa/shared/ws"
+	sharedMW "github.com/adhitiad/javahade/shared/middleware"
+	wsUpgrader "github.com/adhitiad/javahade/shared/ws"
 	"github.com/kreativa/stream-service/internal/ws"
 )
 
@@ -210,3 +210,4 @@ func (h *ViewerHandler) getViewerCount(r *http.Request, streamID string) int64 {
 	count, _ := h.redis.Get(r.Context(), "stream:"+streamID+":viewers").Int64()
 	return count
 }
+

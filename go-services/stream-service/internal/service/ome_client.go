@@ -103,3 +103,4 @@ func (s *OMEService) omeRequest(method, path string, body interface{}) (*http.Re
 
 	return s.client.Do(req)
 }
+

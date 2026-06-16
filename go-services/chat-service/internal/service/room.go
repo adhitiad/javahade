@@ -85,3 +85,4 @@ func (s *RoomService) FindDirectRoom(ctx context.Context, user1, user2 string) (
 	}
 	return &room, err
 }
+

@@ -1,8 +1,0 @@
-go 1.26.3
-
-use (
-	./booking-service
-	./chat-service
-	./shared
-	./stream-service
-)

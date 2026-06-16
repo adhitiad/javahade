@@ -15,10 +15,11 @@ var Upgrader = websocket.Upgrader{
 		origin := r.Header.Get("Origin")
 		// Mengizinkan koneksi lokal untuk development, 
 		// di production sesuaikan dengan domain resmi (CORS)
-		if origin == "http://localhost:3000" || origin == "http://localhost:8000" || origin == "https://kreativa.app" || origin == "" {
+		if origin == "http://localhost:3000" || origin == "http://localhost:8000" || origin == "https://kreativa.app" {
 			return true
 		}
-		// Tolak jika origin tidak terdaftar
+		// Tolak jika origin tidak terdaftar atau kosong (mencegah CSWSH)
 		return false
 	},
 }
+

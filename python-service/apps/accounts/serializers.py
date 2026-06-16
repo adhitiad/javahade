@@ -19,6 +19,16 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         # Add custom claims
         token['role'] = user.role
         token['username'] = user.username
+        token['jwt_secret_version'] = user.jwt_secret_version
+
+        # Get request to compute device fingerprint
+        request = cls.context.get('request') if hasattr(cls, 'context') else None
+        if request:
+            import hashlib
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            ip = request.META.get('REMOTE_ADDR', '')
+            raw_fp = f"{user.id}-{user_agent}-{ip}"
+            token['device_fingerprint'] = hashlib.sha256(raw_fp.encode()).hexdigest()
 
         return token
 
@@ -118,6 +128,9 @@ class CreatorProfileDetailSerializer(CreatorProfileSerializer):
 
     class Meta(CreatorProfileSerializer.Meta):
         fields = CreatorProfileSerializer.Meta.fields + [
+            "earnings_balance", "total_earnings",
+        ]
+        read_only_fields = CreatorProfileSerializer.Meta.read_only_fields + [
             "earnings_balance", "total_earnings",
         ]
 

@@ -74,3 +74,4 @@ func (s *MessageService) GetMessages(ctx context.Context, roomID string, limit, 
 	}
 	return messages, nil
 }
+

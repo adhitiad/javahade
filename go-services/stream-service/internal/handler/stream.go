@@ -7,7 +7,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kreativa/shared/middleware"
+	"github.com/adhitiad/javahade/shared/middleware"
 	"github.com/kreativa/stream-service/internal/model"
 	"github.com/kreativa/stream-service/internal/service"
 )
@@ -82,3 +82,4 @@ func (h *StreamHandler) ListLiveStreams(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(streams)
 }
+

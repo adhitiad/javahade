@@ -34,3 +34,4 @@ func NewPostgresPool(ctx context.Context, databaseURL string) *pgxpool.Pool {
 	log.Info().Msg("Connected to PostgreSQL")
 	return pool
 }
+

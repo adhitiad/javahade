@@ -29,3 +29,4 @@ func NewMongoClient(ctx context.Context, mongoURI string) *mongo.Client {
 	log.Info().Msg("Connected to MongoDB")
 	return client
 }
+

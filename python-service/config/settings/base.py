@@ -183,12 +183,12 @@ CHAT_WS_URL = config("CHAT_WS_URL", default="ws://localhost:8081/ws/chat")
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # =============================================================================
-# Django REST Framework
+# REST Framework
 # =============================================================================
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "common.authentication.CustomJWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -203,8 +203,22 @@ REST_FRAMEWORK = {
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
     ),
+    "DEFAULT_THROTTLE_CLASSES": [
+        "rest_framework.throttling.AnonRateThrottle",
+        "rest_framework.throttling.UserRateThrottle"
+    ],
+    "DEFAULT_THROTTLE_RATES": {
+        "anon": "100/day",
+        "user": "1000/day"
+    },
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%S%z",
 }
+
+# =============================================================================
+# File Uploads
+# =============================================================================
+
+FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
 
 # =============================================================================
 # Simple JWT
@@ -253,8 +267,8 @@ CELERY_TIMEZONE = TIME_ZONE
 # =============================================================================
 # Security & Cookies (Phase 2)
 # =============================================================================
-SESSION_COOKIE_SECURE = not DEBUG # True di production
-CSRF_COOKIE_SECURE = not DEBUG    # True di production
+SESSION_COOKIE_SECURE = not config("DEBUG", default=False, cast=bool)
+CSRF_COOKIE_SECURE = not config("DEBUG", default=False, cast=bool)
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Strict'
 

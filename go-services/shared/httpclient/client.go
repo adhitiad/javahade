@@ -87,3 +87,4 @@ func (c *CircuitBreakerClient) Post(ctx context.Context, url, contentType string
 	req.Header.Set("Content-Type", contentType)
 	return c.Do(req)
 }
+

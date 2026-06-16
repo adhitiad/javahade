@@ -79,3 +79,4 @@ func (s *SeatLockService) GetSeatStatus(ctx context.Context, slotID string, maxS
 
 	return status, nil
 }
+

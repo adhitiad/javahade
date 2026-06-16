@@ -8,8 +8,8 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/kreativa/booking-service/internal/ws"
-	sharedMW "github.com/kreativa/shared/middleware"
-	wsUpgrader "github.com/kreativa/shared/ws"
+	sharedMW "github.com/adhitiad/javahade/shared/middleware"
+	wsUpgrader "github.com/adhitiad/javahade/shared/ws"
 )
 
 // StreamSignalHandler handles WebSocket connections for stream signaling.
@@ -63,3 +63,4 @@ func (h *StreamSignalHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 		}
 	})
 }
+

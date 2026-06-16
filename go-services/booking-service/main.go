@@ -19,9 +19,9 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 
-	"github.com/kreativa/shared/config"
-	"github.com/kreativa/shared/database"
-	"github.com/kreativa/shared/middleware"
+	"github.com/adhitiad/javahade/shared/config"
+	"github.com/adhitiad/javahade/shared/database"
+	"github.com/adhitiad/javahade/shared/middleware"
 
 	"github.com/kreativa/booking-service/internal/handler"
 	"github.com/kreativa/booking-service/internal/service"
@@ -130,3 +130,4 @@ func main() {
 
 	fmt.Println("Booking service stopped")
 }
+

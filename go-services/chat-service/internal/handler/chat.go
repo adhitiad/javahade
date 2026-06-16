@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/kreativa/chat-service/internal/ws"
-	wsUpgrader "github.com/kreativa/shared/ws"
+	wsUpgrader "github.com/adhitiad/javahade/shared/ws"
 )
 
 // allowedOrigins — daftar origin yang diizinkan untuk koneksi WebSocket
@@ -151,3 +151,4 @@ func (h *ChatHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	go client.WritePump()
 	go client.ReadPump()
 }
+

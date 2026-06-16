@@ -87,3 +87,4 @@ func ConsumeEvents(ctx context.Context, client *redis.Client, streamName, groupN
 		}
 	}
 }
+

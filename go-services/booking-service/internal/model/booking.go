@@ -47,3 +47,4 @@ type CreateSlotRequest struct {
 type ReserveRequest struct {
 	SlotID uuid.UUID `json:"slot_id"`
 }
+

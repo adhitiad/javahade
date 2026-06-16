@@ -23,3 +23,4 @@ func NewRedisClient(ctx context.Context, redisURL string) *redis.Client {
 	log.Info().Msg("Connected to Redis")
 	return client
 }
+

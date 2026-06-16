@@ -10,7 +10,7 @@ import (
 
 	"github.com/kreativa/booking-service/internal/model"
 	"github.com/kreativa/booking-service/internal/service"
-	"github.com/kreativa/shared/middleware"
+	"github.com/adhitiad/javahade/shared/middleware"
 )
 
 // BookingHandler handles REST endpoints for booking.
@@ -58,6 +58,20 @@ func (h *BookingHandler) ListSlots(w http.ResponseWriter, r *http.Request) {
 
 func (h *BookingHandler) ReserveSlot(w http.ResponseWriter, r *http.Request) {
 	userID := middleware.GetUserID(r.Context())
+	
+	idempotencyKey := r.Header.Get("Idempotency-Key")
+	if idempotencyKey == "" {
+		http.Error(w, `{"detail":"Idempotency-Key header is required"}`, http.StatusBadRequest)
+		return
+	}
+
+	// Cek Idempotency di Redis (jika tidak ada di Redis, set dan lanjutkan. Jika sudah ada, blokir)
+	redisKey := "idempotency:booking:" + idempotencyKey
+	success, _ := h.svc.GetRedis().SetNX(r.Context(), redisKey, "processing", 24*time.Hour).Result()
+	if !success {
+		http.Error(w, `{"detail":"Request already processed (Idempotency conflict)"}`, http.StatusConflict)
+		return
+	}
 
 	var req model.ReserveRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -122,3 +136,4 @@ func (h *BookingHandler) MyBookings(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(bookings)
 }
+

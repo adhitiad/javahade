@@ -8,7 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"github.com/kreativa/chat-service/internal/service"
-	"github.com/kreativa/shared/middleware"
+	"github.com/adhitiad/javahade/shared/middleware"
 )
 
 // RoomHandler handles REST endpoints for room management.
@@ -114,3 +114,4 @@ func (h *RoomHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode([]interface{}{})
 }
+

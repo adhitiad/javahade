@@ -9,8 +9,8 @@ import (
 
 	"github.com/kreativa/booking-service/internal/service"
 	"github.com/kreativa/booking-service/internal/ws"
-	sharedWS "github.com/kreativa/shared/middleware"
-	wsUpgrader "github.com/kreativa/shared/ws"
+	sharedWS "github.com/adhitiad/javahade/shared/middleware"
+	wsUpgrader "github.com/adhitiad/javahade/shared/ws"
 )
 
 // SeatHandler handles WebSocket connections for seat locking.
@@ -89,3 +89,4 @@ func (h *SeatHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 		}
 	})
 }
+

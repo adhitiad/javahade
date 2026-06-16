@@ -161,28 +161,35 @@ class PayPalCaptureOrderView(APIView):
         capture = paypal.capture_order(order_id)
         if capture and capture.get("status") == "COMPLETED":
             try:
+                from django.db import transaction
                 from decimal import Decimal
                 amount = Decimal(amount_str)
-                from typing import cast
-                user = cast(User, request.user)
                 
-                # Update Balance
-                if currency == "USD": user.balance_usd += amount
-                elif currency == "SGD": user.balance_sgd += amount
-                elif currency == "IDR": user.balance_idr += amount
-                elif currency == "MYR": user.balance_myr += amount
-                elif currency == "CNY": user.balance_cny += amount
-                user.save()
-                
-                from apps.payments.models import WalletTransaction
-                WalletTransaction.objects.create(
-                    user=user,
-                    transaction_type=WalletTransaction.TransactionType.DEPOSIT,
-                    amount=amount,
-                    currency=currency,
-                    status=WalletTransaction.Status.COMPLETED,
-                    notes=f"Top-Up via PayPal (Order: {order_id})"
-                )
+                with transaction.atomic():
+                    # ROW LEVEL LOCKING untuk mencegah Race Condition Top-Up
+                    user = User.objects.select_for_update().get(id=request.user.id)
+                    
+                    # Cek idempotency: Pastikan Order ID ini belum pernah di-topup
+                    from apps.payments.models import WalletTransaction
+                    if WalletTransaction.objects.filter(notes__contains=order_id).exists():
+                        return Response({"error": "Order already processed"}, status=400)
+                    
+                    # Update Balance
+                    if currency == "USD": user.balance_usd += amount
+                    elif currency == "SGD": user.balance_sgd += amount
+                    elif currency == "IDR": user.balance_idr += amount
+                    elif currency == "MYR": user.balance_myr += amount
+                    elif currency == "CNY": user.balance_cny += amount
+                    user.save()
+                    
+                    WalletTransaction.objects.create(
+                        user=user,
+                        transaction_type=WalletTransaction.TransactionType.DEPOSIT,
+                        amount=amount,
+                        currency=currency,
+                        status=WalletTransaction.Status.COMPLETED,
+                        notes=f"Top-Up via PayPal (Order: {order_id})"
+                    )
                 
                 return Response({"status": "COMPLETED"}, status=200)
             except Exception as e:
@@ -256,16 +263,17 @@ class SendGiftAPIView(APIView):
         if not gift_id or not receiver_username:
             return Response({"error": "gift_id and receiver_username required"}, status=400)
             
-        try:
-            gift = VirtualGift.objects.get(id=gift_id, is_active=True)
-            receiver = User.objects.get(username=receiver_username)
-        except (VirtualGift.DoesNotExist, User.DoesNotExist):
-            return Response({"error": "Invalid gift or receiver"}, status=400)
-            
-        if user == receiver:
-            return Response({"error": "You cannot send a gift to yourself"}, status=400)
-            
         with transaction.atomic():
+            try:
+                gift = VirtualGift.objects.get(id=gift_id, is_active=True)
+                # Row-Level Locking untuk Sender dan Receiver
+                user = User.objects.select_for_update().get(id=request.user.id)
+                receiver = User.objects.select_for_update().get(username=receiver_username)
+            except (VirtualGift.DoesNotExist, User.DoesNotExist):
+                return Response({"error": "Invalid gift or receiver"}, status=400)
+                
+            if user == receiver:
+                return Response({"error": "You cannot send a gift to yourself"}, status=400)
             is_anonymous = request.data.get('is_anonymous', False)
             special_animation = request.data.get('special_animation', False)
             

@@ -50,6 +50,7 @@ class User(AbstractUser):
     
     # Keamanan / Recovery
     recovery_codes = models.JSONField(default=list, blank=True, help_text="12 Angka pemulihan akun (1-99)")
+    jwt_secret_version = models.IntegerField(default=1, verbose_name="JWT Secret Version (Log out All)")
     
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -59,6 +60,13 @@ class User(AbstractUser):
     class Meta:  # type: ignore
         db_table = "users"
         ordering = ["-date_joined"]
+        constraints = [
+            models.CheckConstraint(condition=models.Q(balance_usd__gte=0), name="balance_usd_non_negative"),
+            models.CheckConstraint(condition=models.Q(balance_sgd__gte=0), name="balance_sgd_non_negative"),
+            models.CheckConstraint(condition=models.Q(balance_idr__gte=0), name="balance_idr_non_negative"),
+            models.CheckConstraint(condition=models.Q(balance_myr__gte=0), name="balance_myr_non_negative"),
+            models.CheckConstraint(condition=models.Q(balance_cny__gte=0), name="balance_cny_non_negative"),
+        ]
 
     def __str__(self):
         return f"{self.username} ({self.role})"

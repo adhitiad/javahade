@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/kreativa/booking-service/internal/model"
-	sharedDB "github.com/kreativa/shared/database"
+	sharedDB "github.com/adhitiad/javahade/shared/database"
 )
 
 // BookingService handles booking operations.
@@ -24,6 +24,11 @@ type BookingService struct {
 // NewBookingService creates a new BookingService.
 func NewBookingService(db *pgxpool.Pool, redis *redis.Client) *BookingService {
 	return &BookingService{db: db, redis: redis}
+}
+
+// GetRedis returns the redis client instance
+func (s *BookingService) GetRedis() *redis.Client {
+	return s.redis
 }
 
 // CreateSlot creates a new booking slot.
@@ -298,3 +303,4 @@ func (s *BookingService) GetUserBookings(ctx context.Context, userID uuid.UUID) 
 	}
 	return bookings, nil
 }
+

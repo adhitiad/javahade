@@ -50,3 +50,4 @@ type WSMessage struct {
 	Payload   map[string]interface{} `json:"payload"`
 	Timestamp int64                  `json:"timestamp"`
 }
+
