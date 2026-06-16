@@ -1,0 +1,107 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Edit Profil Host — Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-12">
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl md:text-4xl font-black text-white mb-2">Pengaturan Profil Host</h1>
+        <p class="text-gray-400">Poles profil Anda untuk menarik lebih banyak klien eksklusif.</p>
+    </div>
+
+    {% if messages %}
+    <div class="mb-8 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-xl {% if message.tags == 'success' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% else %}bg-red-500/10 border-red-500/30 text-red-400{% endif %} border">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="glass p-8 rounded-3xl border border-white/5">
+        <form method="POST" enctype="multipart/form-data" class="space-y-6">
+            {% csrf_token %}
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Display Name -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-300 mb-2">Nama Tampilan</label>
+                    <input type="text" name="display_name" value="{{ profile.display_name }}" required
+                           class="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                </div>
+
+                <!-- Category -->
+                <div>
+                    <label class="block text-sm font-bold text-gray-300 mb-2">Kategori Utama</label>
+                    <select name="category" class="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                        {% for value, label in categories %}
+                        <option value="{{ value }}" {% if profile.category == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+
+            <!-- Harga Default (USD) -->
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Harga Langganan Dasar (USD)</label>
+                <div class="flex gap-2">
+                    <span class="inline-flex items-center px-4 rounded-xl bg-gray-800 border border-white/10 text-gray-400 font-bold">$</span>
+                    <input type="number" step="0.01" min="0" name="subscription_price" value="{{ profile.subscription_price|stringformat:'.2f' }}" required
+                           class="flex-1 bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- Website Link -->
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Website / Tautan Eksternal (Opsional)</label>
+                <input type="url" name="website" value="{{ profile.website }}" placeholder="https://..."
+                       class="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+            </div>
+
+            <!-- Subscription Rules -->
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Syarat & Ketentuan Kustom (Rules)</label>
+                <textarea name="subscription_rules" rows="4" placeholder="Tulis aturan untuk klien Anda di sini..."
+                          class="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">{{ profile.subscription_rules }}</textarea>
+                <p class="text-xs text-gray-500 mt-1">Aturan ini akan ditampilkan sebelum klien menyelesaikan pembayaran.</p>
+            </div>
+            
+            <!-- Monetization: Algorithmic Commission Boost -->
+            <div class="bg-gradient-to-r from-pink-500/10 to-purple-500/10 border border-pink-500/30 p-6 rounded-2xl">
+                <label class="block text-sm font-black text-pink-400 mb-1 flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                    Algorithmic Commission Boost
+                </label>
+                <p class="text-xs text-gray-300 mb-4">Tingkatkan visibilitas profil Anda secara drastis di halaman pencarian dengan memberikan komisi ekstra ke platform. Komisi minimum adalah 20%.</p>
+                
+                <div class="flex items-center gap-4">
+                    <input type="range" name="platform_commission_rate" min="20" max="50" step="1" value="{{ profile.platform_commission_rate|floatformat:0 }}"
+                           class="flex-1 accent-pink-500 cursor-pointer"
+                           oninput="document.getElementById('commission_val').innerText = this.value + '%'">
+                    <div class="bg-pink-500 text-white font-bold py-2 px-4 rounded-xl text-lg min-w-[80px] text-center" id="commission_val">{{ profile.platform_commission_rate|floatformat:0 }}%</div>
+                </div>
+            </div>
+
+            <!-- Cover Image -->
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Foto Sampul (Cover Image)</label>
+                {% if profile.cover_image %}
+                <div class="mb-3">
+                    <img src="{{ profile.cover_image.url }}" alt="Current Cover" class="w-full h-40 object-cover rounded-xl border border-white/10">
+                </div>
+                {% endif %}
+                <input type="file" name="cover_image" accept="image/*"
+                       class="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-500/20 file:text-purple-400 hover:file:bg-purple-500/30">
+            </div>
+
+            <!-- Submit Button -->
+            <div class="pt-4 border-t border-white/10 text-right">
+                <button type="submit" class="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-500 hover:from-purple-500 hover:to-pink-400 text-white font-bold rounded-xl shadow-lg shadow-purple-500/30 transition-all transform hover:-translate-y-1">
+                    Simpan Perubahan Profil
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

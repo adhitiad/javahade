@@ -1,0 +1,109 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Jadi Host (Kreator) — Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-12 animate-fade-in">
+    <div class="glass p-10 rounded-3xl border border-white/5 shadow-2xl relative overflow-hidden">
+        <!-- Decoration -->
+        <div class="absolute top-0 right-0 w-64 h-64 bg-pink-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute bottom-0 left-0 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        
+        <div class="relative z-10 text-center mb-10">
+            <div class="w-20 h-20 mx-auto rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-3xl mb-4 shadow-lg shadow-pink-500/30">
+                🌟
+            </div>
+            <h1 class="text-3xl font-bold text-white mb-2">Upgrade Akun Menjadi Host</h1>
+            <p class="text-gray-400">Bergabunglah sebagai kreator dan mulai hasilkan uang dari karya, live stream, dan konten eksklusif Anda.</p>
+        </div>
+
+        <form method="POST" action="{% url 'core_ui:become_host' %}" enctype="multipart/form-data" class="relative z-10 space-y-6 max-w-xl mx-auto">
+            {% csrf_token %}
+            
+            {% if error_message %}
+            <div class="p-4 rounded-xl bg-red-500/20 border border-red-500/50 text-red-300 font-bold mb-4">
+                {{ error_message }}
+            </div>
+            {% endif %}
+            
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Nama Panggung (Display Name)</label>
+                <input type="text" name="display_name" required placeholder="Contoh: Alice Wonderland" 
+                       class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-pink-500 focus:border-transparent transition-all">
+                <p class="text-xs text-gray-500 mt-2">Ini adalah nama yang akan dilihat oleh Fans Anda.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Kategori Konten</label>
+                <select name="category" class="w-full px-4 py-3 bg-gray-800 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-pink-500 transition-all">
+                    <option value="entertainment">Entertainment</option>
+                    <option value="lesbian">Lesbian</option>
+                    <option value="lifestyle">Lifestyle</option>
+                    <option value="beauty">Beauty & Fashion</option>
+                    <option value="fitness">Fitness & Health</option>
+                    <option value="travel">Travel</option>
+                    <option value="art">Art & Craft</option>
+                    <option value="finance">Finance & Business</option>
+                    <option value="tech">Technology</option>
+                    <option value="sex">Sex</option>
+                    <option value="fetish">Fetish</option>
+                    <option value="other">Lainnya</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Nama Lengkap (Sesuai KTP)</label>
+                <input type="text" name="full_name" required placeholder="Contoh: Alice Sutomo" 
+                       class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-pink-500 transition-all">
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Tanggal Lahir</label>
+                <input type="date" name="birth_date" required 
+                       class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-pink-500 transition-all">
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Nomor Identitas (NIK KTP / Passport / ID Card No)</label>
+                <input type="text" name="document_number" required placeholder="Contoh: 3171234567890001" 
+                       class="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-pink-500 transition-all">
+            </div>
+
+            <!-- Real file input for KYC -->
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Dokumen Identitas (KYC: KTP/Passport/ID Card)</label>
+                <div class="relative border-2 border-dashed border-white/20 rounded-xl p-8 text-center bg-white/5 hover:bg-white/10 transition-colors">
+                    <input type="file" name="kyc_document" required accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <p class="text-gray-400 text-sm">Klik atau Seret file foto KTP/Passport/ID Card ke sini</p>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Foto Selfie Memegang KTP (Terbaru)</label>
+                <div class="relative border-2 border-dashed border-white/20 rounded-xl p-8 text-center bg-white/5 hover:bg-white/10 transition-colors">
+                    <input type="file" name="selfie_file" required accept="image/*" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <p class="text-gray-400 text-sm">Klik atau Seret foto Selfie. Maksimal umur foto 4 bulan.</p>
+                </div>
+                <p class="text-xs text-pink-400 mt-2">Hanya pengguna Perempuan yang akan disetujui. Diverifikasi oleh AI Groq.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Portfolio Wajah Bebas (Wajib Minimal 3 Foto)</label>
+                <div class="relative border-2 border-dashed border-white/20 rounded-xl p-8 text-center bg-white/5 hover:bg-white/10 transition-colors">
+                    <input type="file" name="portfolio_photos" required accept="image/*" multiple class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+                    <p class="text-gray-400 text-sm">Klik atau Seret MINIMAL 3 foto wajah bebas Anda</p>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Foto-foto ini akan dipajang di profil publik Anda sebagai bukti keabsahan identitas.</p>
+            </div>
+
+            <div class="pt-6">
+                <button type="submit" class="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-bold rounded-xl shadow-lg shadow-pink-500/25 transform hover:scale-[1.02] active:scale-[0.98] transition-all">
+                    Daftar Sekarang
+                </button>
+            </div>
+            
+            <p class="text-center text-xs text-gray-500">Dengan mendaftar, Anda menyetujui Syarat dan Ketentuan Kreator Kreativa.</p>
+        </form>
+    </div>
+</div>
+{% endblock %}

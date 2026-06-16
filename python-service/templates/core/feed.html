@@ -1,0 +1,214 @@
+{% extends "booking/base.html" %}
+{% load static %}
+
+{% block title %}Beranda — Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in flex flex-col lg:flex-row gap-8">
+    
+    <!-- LEFT SIDEBAR: Navigation & Profile -->
+    <div class="hidden lg:block w-64 flex-shrink-0 sticky top-24 h-fit space-y-6">
+        <!-- User Mini Profile -->
+        <div class="glass p-6 rounded-3xl border border-white/5">
+            <div class="flex items-center gap-4 mb-6">
+                <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-lg font-bold text-white shadow-lg">
+                    {{ request.user.username|make_list|first|upper }}
+                </div>
+                <div>
+                    <h3 class="font-bold text-white truncate max-w-[120px]">@{{ request.user.username }}</h3>
+                    <p class="text-xs text-gray-400">Fans</p>
+                </div>
+            </div>
+            {% if request.user.is_creator %}
+            <a href="{% url 'core_ui:edit_creator_profile' %}" class="block w-full py-2.5 px-4 text-center rounded-xl bg-white/5 hover:bg-white/10 text-sm font-semibold text-white transition-colors">
+                Edit Profil Host
+            </a>
+            {% endif %}
+        </div>
+
+        <!-- Menu Navigation -->
+        <nav class="space-y-2">
+            <a href="{% url 'core_ui:index' %}" class="flex items-center gap-4 px-5 py-3 rounded-xl bg-purple-600/20 text-purple-400 font-bold transition-colors">
+                <span class="text-xl">🏠</span> Beranda
+            </a>
+            
+            <a href="{% url 'core_ui:user_wallet' %}" class="flex items-center gap-4 px-5 py-3 rounded-xl text-emerald-400 hover:bg-emerald-500/10 font-bold transition-colors">
+                <span class="text-xl">💰</span> Dompet Finansial
+            </a>
+
+            {% if request.user.is_admin_user %}
+            <a href="{% url 'core_ui:admin_dashboard' %}" class="flex items-center gap-4 px-5 py-3 rounded-xl text-red-400 hover:bg-red-500/10 font-bold transition-colors">
+                <span class="text-xl">🛠️</span> Dasbor Admin
+            </a>
+            {% endif %}
+
+            {% if request.user.is_creator %}
+            <a href="{% url 'core_ui:creator_profile' request.user.username %}" class="flex items-center gap-4 px-5 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white font-semibold transition-colors">
+                <span class="text-xl">👤</span> Profil Saya
+            </a>
+            <a href="{% url 'booking:host_bookings_list' %}" class="flex items-center gap-4 px-5 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white font-semibold transition-colors">
+                <span class="text-xl">📅</span> Pesanan Masuk
+            </a>
+            {% elif request.user.gender == 'F' %}
+            <a href="{% url 'core_ui:become_host' %}" class="flex items-center gap-4 px-5 py-3 rounded-xl text-pink-400 hover:bg-white/5 hover:text-pink-300 font-bold transition-colors">
+                <span class="text-xl">🌟</span> Jadi Host
+            </a>
+            {% endif %}
+            <a href="{% url 'core_ui:family_portal' %}" class="flex items-center gap-4 px-5 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white font-semibold transition-colors">
+                <span class="text-xl">🏢</span> Family
+            </a>
+            {% if request.user.gender == 'F' or request.user.role == 'host' or request.user.role == 'admin' or request.user.role == 'superadmin' %}
+            <a href="{% url 'streaming_ui:list' %}" class="flex items-center gap-4 px-5 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white font-semibold transition-colors">
+                <span class="text-xl">🔴</span> Live Stream
+            </a>
+            <a href="{% url 'booking:my_bookings' %}" class="flex items-center gap-4 px-5 py-3 rounded-xl text-gray-400 hover:bg-white/5 hover:text-white font-semibold transition-colors">
+                <span class="text-xl">🎫</span> Pesanan Privat
+            </a>
+            {% endif %}
+        </nav>
+    </div>
+
+    <!-- MAIN FEED -->
+    <div class="flex-1 max-w-2xl w-full mx-auto space-y-6">
+        
+        <!-- Story / Live Highlights -->
+        <div class="glass p-4 rounded-3xl border border-white/5 flex gap-4 overflow-x-auto no-scrollbar">
+            {% if request.user.role == 'host' or request.user.role == 'admin' or request.user.role == 'superadmin' %}
+            <!-- Add Story/Stream Button -->
+            <button class="flex-shrink-0 flex flex-col items-center gap-2 group">
+                <div class="w-16 h-16 rounded-full border-2 border-dashed border-gray-600 flex items-center justify-center bg-white/5 group-hover:bg-white/10 transition-colors">
+                    <span class="text-2xl text-gray-400 group-hover:text-white">+</span>
+                </div>
+                <span class="text-xs text-gray-400">Go Live</span>
+            </button>
+            {% endif %}
+            
+            <!-- Live Dummy 1 -->
+            <a href="#" class="flex-shrink-0 flex flex-col items-center gap-2">
+                <div class="w-16 h-16 rounded-full p-[3px] bg-gradient-to-tr from-rose-400 via-fuchsia-500 to-indigo-500 animate-pulse shadow-lg shadow-pink-500/50">
+                    <div class="w-full h-full rounded-full bg-gray-900 border-2 border-transparent flex items-center justify-center text-xl">💋</div>
+                </div>
+                <span class="text-xs text-white">Alice</span>
+            </a>
+            
+            <!-- Live Dummy 2 -->
+            <a href="#" class="flex-shrink-0 flex flex-col items-center gap-2">
+                <div class="w-16 h-16 rounded-full p-[2px] bg-gradient-to-tr from-purple-500 to-pink-500">
+                    <div class="w-full h-full rounded-full bg-gray-900 border-2 border-transparent flex items-center justify-center text-xl">👩‍❤️‍💋‍👩</div>
+                </div>
+                <span class="text-xs text-white">John</span>
+            </a>
+        </div>
+
+        {% if request.user.role == 'host' or request.user.role == 'admin' or request.user.role == 'superadmin' %}
+        <!-- Compose Post -->
+        <div class="glass p-5 rounded-3xl border border-white/5">
+            <div class="flex gap-4">
+                <div class="w-10 h-10 rounded-full bg-gray-700 flex-shrink-0"></div>
+                <input type="text" placeholder="Ada konten eksklusif hari ini?" class="flex-1 bg-transparent border-none text-white focus:ring-0 text-lg placeholder-gray-500">
+            </div>
+            <div class="flex justify-between items-center mt-4 pt-4 border-t border-gray-800">
+                <div class="flex gap-2 text-xl">
+                    <button class="p-2 hover:bg-white/10 rounded-full transition-colors">📷</button>
+                    <button class="p-2 hover:bg-white/10 rounded-full transition-colors">🎥</button>
+                    <button class="p-2 hover:bg-white/10 rounded-full transition-colors">🎙️</button>
+                </div>
+                <button class="px-6 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold rounded-full transition-colors">Post</button>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Post Feed (Dummy Data) -->
+        <div class="glass rounded-3xl border border-white/5 overflow-hidden">
+            <!-- Post Header -->
+            <div class="p-5 flex justify-between items-start">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-r from-rose-400 to-pink-500 p-[2px] shadow-lg shadow-pink-500/30">
+                        <div class="w-full h-full bg-gray-900 rounded-full flex items-center justify-center text-lg">💅</div>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white flex items-center gap-1">
+                            Alice Wonderland <svg class="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-1.9 14.7L6 12.6l1.5-1.5 2.6 2.6 6.4-6.4 1.5 1.5-8.1 8.1z"/></svg>
+                        </h4>
+                        <p class="text-xs text-gray-400">@alice • 2 jam yang lalu</p>
+                    </div>
+                </div>
+                <button class="text-gray-500 hover:text-white">•••</button>
+            </div>
+            <!-- Post Content -->
+            <div class="px-5 pb-3">
+                <p class="text-gray-200">Hai semuanya! Nanti malam aku bakal live stream khusus untuk VIP subscribers ya! Jangan lupa kunci tiket (reserve seat) kalian di menu Jadwal! ✨🍷</p>
+            </div>
+            <!-- Post Image Locked -->
+            <div class="relative w-full aspect-square bg-gray-900 border-y border-white/5 flex flex-col items-center justify-center">
+                <div class="absolute inset-0 bg-black/60 backdrop-blur-xl z-10 flex flex-col items-center justify-center p-6 text-center">
+                    <span class="text-4xl mb-4">🔒</span>
+                    <h3 class="text-xl font-bold text-white mb-2">Konten Eksklusif</h3>
+                    <p class="text-sm text-gray-400 mb-6">Berlangganan untuk membuka foto dan video rahasia.</p>
+                    <button class="px-8 py-3 bg-white text-black font-bold rounded-full hover:bg-gray-200 transition-colors">
+                        Subscribe for $9.99
+                    </button>
+                </div>
+                <!-- Blurred background image -->
+                <div class="w-full h-full bg-gradient-to-tr from-pink-900 to-purple-900 opacity-50 blur-sm"></div>
+            </div>
+            <!-- Post Actions -->
+            <div class="p-4 flex justify-between items-center bg-white/[0.02]">
+                <div class="flex gap-4">
+                    <button class="flex items-center gap-2 text-gray-400 hover:text-pink-500 transition-colors">
+                        <span class="text-xl">❤️</span> 1.2k
+                    </button>
+                    <button class="flex items-center gap-2 text-gray-400 hover:text-blue-400 transition-colors">
+                        <span class="text-xl">💬</span> 342
+                    </button>
+                    <button class="flex items-center gap-2 text-gray-400 hover:text-green-400 transition-colors">
+                        <span class="text-xl">💰</span> Tip
+                    </button>
+                </div>
+                <button class="text-gray-400 hover:text-white">
+                    <span class="text-xl">🔖</span>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- RIGHT SIDEBAR: Suggestions -->
+    <div class="hidden lg:block w-80 flex-shrink-0 sticky top-24 h-fit space-y-6">
+        
+        <div class="glass p-6 rounded-3xl border border-white/5">
+            <h3 class="font-bold text-white mb-4">Saran Kreator</h3>
+            <div class="space-y-4">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-700"></div>
+                        <div>
+                            <p class="text-sm font-bold text-white">Bob Builder</p>
+                            <p class="text-xs text-gray-400">@builderbob</p>
+                        </div>
+                    </div>
+                    <button class="text-xs font-bold text-purple-400 hover:text-purple-300">Lihat</button>
+                </div>
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gray-700"></div>
+                        <div>
+                            <p class="text-sm font-bold text-white">Charlie P</p>
+                            <p class="text-xs text-gray-400">@cp_music</p>
+                        </div>
+                    </div>
+                    <button class="text-xs font-bold text-purple-400 hover:text-purple-300">Lihat</button>
+                </div>
+            </div>
+        </div>
+        
+        <div class="text-xs text-gray-500 flex gap-2 flex-wrap px-2">
+            <a href="{% url 'core_ui:about' %}" class="hover:underline">Tentang</a>
+            <a href="{% url 'core_ui:help' %}" class="hover:underline">Bantuan</a>
+            <a href="{% url 'core_ui:privacy' %}" class="hover:underline">Privasi</a>
+            <a href="{% url 'core_ui:terms' %}" class="hover:underline">Syarat</a>
+            <span>© 2026 Kreativa</span>
+        </div>
+    </div>
+</div>
+{% endblock %}

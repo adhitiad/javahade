@@ -1,0 +1,81 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Pesanan Masuk — Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="flex items-center justify-between mb-8">
+        <h1 class="text-3xl font-bold text-white">Daftar Pesanan Privat Anda</h1>
+        <a href="{% url 'core_ui:creator_profile' request.user.username %}" class="px-6 py-2 bg-gray-800 hover:bg-gray-700 text-white font-medium rounded-xl border border-white/10 transition-colors">
+            ← Kembali ke Profil
+        </a>
+    </div>
+
+    {% if messages %}
+    <div class="mb-6 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-xl {% if message.tags == 'success' %}bg-green-500/20 text-green-300 border border-green-500/30{% elif message.tags == 'warning' %}bg-yellow-500/20 text-yellow-300 border border-yellow-500/30{% else %}bg-blue-500/20 text-blue-300 border border-blue-500/30{% endif %}">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <div class="glass rounded-3xl border border-white/5 overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm text-gray-300">
+                <thead class="bg-white/5 text-xs uppercase text-gray-400">
+                    <tr>
+                        <th class="px-6 py-4">Klien</th>
+                        <th class="px-6 py-4">Durasi</th>
+                        <th class="px-6 py-4">Tgl Sesi</th>
+                        <th class="px-6 py-4">Net Payout</th>
+                        <th class="px-6 py-4">Status</th>
+                        <th class="px-6 py-4 text-right">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for booking in bookings %}
+                    <tr class="border-b border-white/5 hover:bg-white/5 transition-colors">
+                        <td class="px-6 py-4 font-bold text-white">
+                            @{{ booking.user.username }}
+                            {% if booking.is_elite_client %}
+                            <span title="Elite Fan" class="ml-1 text-yellow-400">👑</span>
+                            {% endif %}
+                            <div class="text-xs font-normal text-gray-500">{{ booking.created_at|date:"d M Y, H:i" }}</div>
+                        </td>
+                        <td class="px-6 py-4">{{ booking.rate.get_duration_type_display }}</td>
+                        <td class="px-6 py-4">{{ booking.start_datetime|date:"d M Y, H:i" }}</td>
+                        <td class="px-6 py-4 text-green-400 font-bold">
+                            {{ booking.rate.currency }} {{ booking.net_payout|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if booking.status == 'pending' %}
+                            <span class="px-3 py-1 bg-yellow-500/20 text-yellow-300 border border-yellow-500/30 rounded-full text-xs font-bold">Tertunda</span>
+                            {% elif booking.status == 'confirmed' %}
+                            <span class="px-3 py-1 bg-green-500/20 text-green-300 border border-green-500/30 rounded-full text-xs font-bold">Diterima</span>
+                            {% elif booking.status == 'cancelled' %}
+                            <span class="px-3 py-1 bg-red-500/20 text-red-300 border border-red-500/30 rounded-full text-xs font-bold">Ditolak</span>
+                            {% elif booking.status == 'completed' %}
+                            <span class="px-3 py-1 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded-full text-xs font-bold">Selesai</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-right">
+                            <a href="{% url 'booking:host_booking_detail' booking.id %}" class="px-4 py-2 bg-indigo-500 hover:bg-indigo-600 text-white text-xs font-bold rounded-lg transition-colors">
+                                Lihat Detail
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-12 text-center text-gray-500">
+                            Belum ada pesanan masuk.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

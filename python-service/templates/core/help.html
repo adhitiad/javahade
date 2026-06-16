@@ -1,0 +1,26 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Pusat Bantuan — Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-16 animate-fade-in">
+    <div class="glass p-10 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
+        <div class="absolute bottom-0 left-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-indigo-500 mb-6">Pusat Bantuan</h1>
+        <div class="space-y-6 text-gray-300">
+            <div>
+                <h3 class="text-xl font-bold text-white mb-2">Bagaimana cara mendaftar sebagai Host?</h3>
+                <p>Klik tombol "Jadi Host" di menu navigasi, isi data profil Anda, dan pastikan Anda mengunggah KTP dan foto selfie untuk diverifikasi oleh sistem AI kami (Groq Vision). Proses persetujuan memakan waktu sekitar beberapa menit.</p>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white mb-2">Bagaimana sistem pesanan (Booking) bekerja?</h3>
+                <p>Klien dapat mengunjungi profil Anda dan membayar untuk sesi private. Setelah klien melakukan booking, Anda akan menerima pemberitahuan di menu "Pesanan Masuk" di mana Anda dapat melihat jadwal, durasi, dan detail klien.</p>
+            </div>
+            <div>
+                <h3 class="text-xl font-bold text-white mb-2">Hubungi Kami</h3>
+                <p>Mengalami masalah teknis? Kirimkan surel kepada kami di <a href="mailto:support@kreativa.app" class="text-pink-400 hover:underline">support@kreativa.app</a>.</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

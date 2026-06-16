@@ -1,0 +1,152 @@
+{% extends "booking/base.html" %} 
+{% block title %} 
+Login — Kreativa Booking 
+{% endblock %} 
+{% block content %}
+
+<div
+  class="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden"
+>
+  <!-- Background decorations -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div
+      class="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-indigo-600/10 blur-3xl"
+    ></div>
+    <div
+      class="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-purple-600/10 blur-3xl"
+    ></div>
+    <div
+      class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-brand-500/5 blur-3xl animate-pulse-slow"
+    ></div>
+  </div>
+
+  <div class="w-full max-w-md relative animate-fade-in">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div
+        class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 shadow-xl shadow-indigo-500/25 mb-4"
+      >
+        <svg
+          class="w-8 h-8 text-white"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+          />
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold gradient-text">Selamat Datang</h1>
+      <p class="text-gray-400 mt-2">Masuk ke akun Kreativa Booking Anda</p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="glass rounded-2xl p-8 shadow-2xl">
+      <form method="POST" action="{% url 'booking:login' %}" id="login-form">
+        {% csrf_token %} {% if form.errors %}
+        <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+          <div class="flex items-start gap-3">
+            <span class="text-lg">❌</span>
+            <div>
+              <p class="text-sm font-semibold text-red-400">Login Gagal</p>
+              <!-- prettier-ignore -->
+              <div>
+                {% for field, errors in form.errors.items %}
+                  {% for error in errors %}
+                    <p class="text-sm text-red-300/80 mt-1">{{ error }}</p>
+                  {% endfor %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="space-y-5">
+          <!-- Username -->
+          <div>
+            <label
+              for="id_username"
+              class="block text-sm font-medium text-gray-300 mb-2"
+              >Username</label
+            >
+            {{ form.username }}
+          </div>
+
+          <!-- Password -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="id_password" class="block text-sm font-medium text-gray-300">Password</label>
+              <a href="{% url 'booking:password_reset' %}" class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors">Lupa Password?</a>
+            </div>
+            {{ form.password }}
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          id="login-btn"
+          class="w-full mt-8 px-6 py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-xl hover:from-indigo-500 hover:to-purple-500 focus:ring-4 focus:ring-indigo-500/30 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40"
+        >
+          Masuk
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-4 my-6">
+        <div class="flex-1 h-px bg-gray-700"></div>
+        <span class="text-xs text-gray-500 uppercase tracking-wider">atau</span>
+        <div class="flex-1 h-px bg-gray-700"></div>
+      </div>
+
+      <!-- Register Link & Recovery Link -->
+      <div class="space-y-4">
+        <p class="text-center text-sm text-gray-400">
+          Belum punya akun?
+          <a
+            href="{% url 'booking:register' %}"
+            class="text-indigo-400 hover:text-indigo-300 font-semibold transition-colors"
+            >Daftar sekarang</a
+          >
+        </p>
+
+        <!-- Divider -->
+        <div class="flex items-center gap-4">
+          <div class="flex-1 h-px bg-gray-700"></div>
+          <span class="text-xs text-gray-500 uppercase tracking-wider">opsi darurat</span>
+          <div class="flex-1 h-px bg-gray-700"></div>
+        </div>
+
+        <a href="{% url 'booking:login_recovery' %}" class="block text-center w-full px-6 py-2.5 rounded-xl bg-red-500/10 text-red-400 font-medium hover:bg-red-500/20 transition-all border border-red-500/20 text-sm">
+          Masuk dengan Kode Pemulihan
+        </a>
+      </div>
+    </div>
+
+    <!-- Security badge -->
+    <div
+      class="mt-6 flex items-center justify-center gap-2 text-xs text-gray-600"
+    >
+      <svg
+        class="w-4 h-4"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+      >
+        <path
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          stroke-width="2"
+          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+        />
+      </svg>
+      <span>Dilindungi CSRF Protection & Password Hashing</span>
+    </div>
+  </div>
+</div>
+{% endblock %}

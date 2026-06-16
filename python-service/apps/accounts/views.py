@@ -1,0 +1,141 @@
+"""
+Accounts views — registration, user profile, creator management.
+"""
+
+from django.contrib.auth import get_user_model
+from rest_framework import generics, permissions, status
+from rest_framework.response import Response
+from rest_framework.views import APIView
+
+from .models import CreatorProfile
+from .permissions import IsCreator, IsOwnerOrReadOnly
+from .serializers import (
+    CreatorApplySerializer,
+    CreatorProfileDetailSerializer,
+    CreatorProfileSerializer,
+    RegisterSerializer,
+    UserPublicSerializer,
+    UserSerializer,
+)
+
+User = get_user_model()
+
+
+# ─────────────────────────────────────────────
+# Auth Views
+# ─────────────────────────────────────────────
+
+
+class RegisterView(generics.CreateAPIView):
+    """POST /api/v1/auth/register/ — Register a new user."""
+
+    serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        return Response(
+            {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "message": "Registration successful.",
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
+# ─────────────────────────────────────────────
+# User Views
+# ─────────────────────────────────────────────
+
+
+class UserMeView(generics.RetrieveUpdateAPIView):
+    """GET/PUT /api/v1/users/me/ — Current user profile."""
+
+    serializer_class = UserSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get_object(self):  # type: ignore
+        return self.request.user
+
+
+class UserDetailView(generics.RetrieveAPIView):
+    """GET /api/v1/users/{id}/ — Public user profile."""
+
+    serializer_class = UserPublicSerializer
+    permission_classes = [permissions.AllowAny]
+    queryset = User.objects.all()
+    lookup_field = "id"
+
+
+# ─────────────────────────────────────────────
+# Creator Views
+# ─────────────────────────────────────────────
+
+
+class CreatorListView(generics.ListAPIView):
+    """GET /api/v1/creators/ — List approved creators."""
+
+    serializer_class = CreatorProfileSerializer
+    permission_classes = [permissions.AllowAny]
+    queryset = CreatorProfile.objects.filter(is_approved=True).select_related("user")
+    filterset_fields = ["category"]
+    search_fields = ["display_name", "user__username"]
+    ordering_fields = ["subscriber_count", "created_at"]
+
+
+class CreatorDetailView(generics.RetrieveAPIView):
+    """GET /api/v1/creators/{username}/ — Creator profile by username."""
+
+    serializer_class = CreatorProfileSerializer
+    permission_classes = [permissions.AllowAny]
+    lookup_field = "user__username"
+    lookup_url_kwarg = "username"
+    queryset = CreatorProfile.objects.filter(is_approved=True).select_related("user")
+
+
+class CreatorApplyView(APIView):
+    """POST /api/v1/creators/apply/ — Apply to become a creator."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+
+        if user.role == User.Role.HOST:  # type: ignore
+            return Response(
+                {"detail": "You are already a creator."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if CreatorProfile.objects.filter(user=user).exists():
+            return Response(
+                {"detail": "Application already submitted."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        serializer = CreatorApplySerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        profile = serializer.save(user=user)
+
+        # Update user role to creator (pending approval)
+        user.role = User.Role.HOST  # type: ignore
+        user.save(update_fields=["role"])
+
+        return Response(
+            CreatorProfileSerializer(profile).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+
+class CreatorMeView(generics.RetrieveUpdateAPIView):
+    """GET/PUT /api/v1/creators/me/ — Own creator profile with earnings."""
+
+    serializer_class = CreatorProfileDetailSerializer
+    permission_classes = [permissions.IsAuthenticated, IsCreator]
+
+    def get_object(self):
+        return self.request.user.creator_profile  # type: ignore

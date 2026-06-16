@@ -1,0 +1,435 @@
+{% extends 'base_tailwind.html' %}
+{% load static %}
+
+{% block title %}Booking Host: {{ host.username }}{% endblock %}
+
+{% block content %}
+<div class="min-h-screen bg-gray-900 py-10 px-4 sm:px-6 lg:px-8">
+  <div class="max-w-2xl mx-auto space-y-8">
+    
+    <!-- Header -->
+    <div class="bg-gray-800 rounded-3xl shadow-2xl overflow-hidden border border-gray-700/50 p-8 flex items-center gap-6">
+      <img src="https://ui-avatars.com/api/?name={{ host.username }}&background=6366f1&color=fff&size=100" class="w-20 h-20 rounded-2xl object-cover shadow-lg border-2 border-indigo-500">
+      <div>
+        <h1 class="text-3xl font-bold text-white tracking-tight">Booking {{ host.username }}</h1>
+        <p class="text-gray-400 mt-1">Pilih durasi dan jadwalkan sesi privat Anda dengan Host ini.</p>
+      </div>
+    </div>
+
+    <!-- Booking Form -->
+    <div class="bg-gray-800 rounded-3xl p-8 border border-gray-700/50 shadow-2xl">
+      <form method="POST" class="space-y-6">
+        {% csrf_token %}
+        
+        <!-- Pilihan Durasi/Tarif -->
+        <div>
+          <label class="block text-lg font-bold text-white mb-4">Pilih Paket Durasi</label>
+          {% if rates %}
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {% for rate in rates %}
+              <label class="cursor-pointer relative">
+                <input type="radio" name="rate_id" value="{{ rate.id }}" data-price="{{ rate.price }}" data-currency="{{ rate.currency }}" required class="peer sr-only">
+                <div class="p-5 rounded-2xl border-2 border-gray-700 bg-gray-900/50 hover:border-indigo-400 peer-checked:border-indigo-500 peer-checked:bg-indigo-500/10 transition-all text-center">
+                  <div class="flex justify-between items-start mb-2">
+                    <span class="text-lg font-bold text-white">{{ rate.get_duration_type_display }}</span>
+                    <div class="w-5 h-5 rounded-full border-2 border-gray-500 peer-checked:border-indigo-500 peer-checked:bg-indigo-500 flex items-center justify-center">
+                      <svg class="w-3 h-3 text-white opacity-0 peer-checked:opacity-100" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                  </div>
+                  <p class="text-xl font-black text-indigo-400 rate-price-display">{{ rate.currency }} {{ rate.price|floatformat:2 }}</p>
+                  <p class="text-sm font-bold text-pink-400 mt-1 geo-price-display hidden"></p>
+                </div>
+              </label>
+              {% endfor %}
+            </div>
+          {% else %}
+            <div class="bg-red-500/10 border border-red-500/50 rounded-xl p-4 text-red-400">
+              Maaf, Host ini belum mengatur daftar harga booking-nya.
+            </div>
+          {% endif %}
+        </div>
+
+        {% if rates %}
+        <!-- Waktu Mulai -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Waktu Mulai</label>
+          <input type="datetime-local" name="start_datetime" required class="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
+          <p class="text-xs text-gray-400 mt-2">Host akan memverifikasi dan menyetujui jadwal ini nanti.</p>
+        </div>
+
+        <!-- Metode Pembayaran -->
+        <div>
+          <label class="block text-lg font-bold text-white mb-4">Metode Pembayaran</label>
+          <div class="grid grid-cols-2 sm:grid-cols-5 gap-3">
+            <!-- Wallet -->
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_method" value="wallet" required class="peer sr-only" checked>
+              <div class="p-3 rounded-xl border border-gray-600 bg-gray-800 hover:border-pink-400 peer-checked:border-pink-500 peer-checked:bg-pink-500/20 transition-all text-center">
+                <span class="text-2xl block mb-1">💰</span>
+                <span class="text-sm font-bold text-white">Saldo Wallet</span>
+                <span id="wallet-balance-display" class="text-xs text-gray-400 block mt-1">-</span>
+              </div>
+            </label>
+            <!-- PayPal -->
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_method" value="paypal" required class="peer sr-only">
+              <div class="p-3 rounded-xl border border-gray-600 bg-gray-800 hover:border-blue-400 peer-checked:border-blue-500 peer-checked:bg-blue-500/20 transition-all text-center">
+                <span class="text-2xl block mb-1">💳</span>
+                <span class="text-sm font-bold text-white">PayPal</span>
+              </div>
+            </label>
+            <!-- BNB -->
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_method" value="bnb" class="peer sr-only">
+              <div class="p-3 rounded-xl border border-gray-600 bg-gray-800 hover:border-yellow-400 peer-checked:border-yellow-500 peer-checked:bg-yellow-500/20 transition-all text-center">
+                <span class="text-2xl block mb-1">🪙</span>
+                <span class="text-sm font-bold text-white">BNB</span>
+              </div>
+            </label>
+            <!-- USDT -->
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_method" value="usdt" class="peer sr-only">
+              <div class="p-3 rounded-xl border border-gray-600 bg-gray-800 hover:border-emerald-400 peer-checked:border-emerald-500 peer-checked:bg-emerald-500/20 transition-all text-center">
+                <span class="text-2xl block mb-1">💵</span>
+                <span class="text-sm font-bold text-white">USDT</span>
+              </div>
+            </label>
+            <!-- Bank Transfer -->
+            <label class="cursor-pointer">
+              <input type="radio" name="payment_method" value="bank_transfer" class="peer sr-only">
+              <div class="p-3 rounded-xl border border-gray-600 bg-gray-800 hover:border-purple-400 peer-checked:border-purple-500 peer-checked:bg-purple-500/20 transition-all text-center">
+                <span class="text-2xl block mb-1">🏦</span>
+                <span class="text-sm font-bold text-white">Bank Transfer</span>
+              </div>
+            </label>
+          </div>
+        </div>
+
+        <!-- Catatan -->
+        <div>
+          <label class="block text-sm font-medium text-gray-300 mb-2">Catatan / Pesan Khusus (Opsional)</label>
+          <textarea name="notes" rows="3" class="w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Tulis instruksi atau pesan untuk host..."></textarea>
+        </div>
+
+        <!-- Crypto Payment Details (Hidden by default) -->
+        <div id="crypto-payment-container" class="hidden mt-6 bg-gray-900/80 border border-gray-700 rounded-2xl p-6 shadow-inner">
+          <h3 class="text-xl font-bold text-white mb-2 flex items-center gap-2">
+            <span id="crypto-icon">🪙</span> Pembayaran <span id="crypto-name">Kripto</span>
+          </h3>
+          <p class="text-sm text-gray-400 mb-6">Silakan transfer sesuai total tagihan ke alamat dompet SafePal kami di bawah ini. Harap perhatikan Jaringan (Network) yang digunakan agar dana tidak hilang.</p>
+          
+          <div class="flex flex-col md:flex-row gap-6 items-center">
+            <!-- QR Code Placeholder -->
+            <div class="w-40 h-40 bg-white p-2 rounded-xl flex-shrink-0">
+              <img id="crypto-qr" src="" alt="QR Code Wallet" class="w-full h-full object-contain">
+            </div>
+            
+            <div class="flex-1 w-full space-y-4">
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Jaringan (Network)</label>
+                <div id="crypto-network" class="text-lg font-bold text-white bg-gray-800 px-3 py-1 rounded-md inline-block">BEP20</div>
+              </div>
+              <div>
+                <label class="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1">Alamat Wallet</label>
+                <div class="flex items-center gap-2">
+                  <input type="text" id="crypto-address" readonly value="" class="w-full bg-gray-800 border border-gray-700 rounded-lg py-2 px-3 text-gray-300 font-mono text-sm focus:outline-none">
+                  <button type="button" onclick="copyCryptoAddress()" class="p-2 bg-gray-700 hover:bg-gray-600 rounded-lg text-white transition-colors" title="Salin Alamat">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-6 pt-6 border-t border-gray-700">
+            <label class="block text-sm font-medium text-gray-300 mb-2">Transaction Hash (TXID) <span class="text-red-400">*</span></label>
+            <input type="text" id="crypto-txid" class="w-full px-4 py-3 bg-gray-800 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all" placeholder="Masukkan TXID bukti transfer Anda...">
+            <p class="text-xs text-yellow-500 mt-2">Booking tidak akan diproses jika TXID kosong atau tidak valid.</p>
+          </div>
+        </div>
+
+        <!-- Warning & Confirmation -->
+        <div class="bg-red-500/10 border border-red-500/50 rounded-2xl p-6 mt-6">
+          <h3 class="text-red-400 font-bold flex items-center gap-2 mb-3">
+            ⚠️ Peringatan Regulasi Booking
+          </h3>
+          <ul class="list-disc list-inside text-sm text-gray-300 space-y-2 mb-4">
+            <li>Jika Anda membatalkan pesanan karena <b>gagal mencapai kesepakatan</b> dengan Host, dana Anda akan dipotong <b>15%</b> (85% dikembalikan).</li>
+            <li>Mengubah jadwal (Reschedule) akan dikenakan biaya tambahan <b>1.56%</b> dari harga awal. Batas maksimal ubah jadwal adalah <b>2 kali</b>.</li>
+            <li>Anda diwajibkan bertemu/hadir tepat waktu sesuai lokasi & waktu yang disepakati bersama. Laporan lokasi fiktif dapat berakibat sanksi *banned* permanen.</li>
+          </ul>
+          <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" id="booking-agreement" required class="mt-1 w-5 h-5 rounded border-gray-600 text-indigo-500 focus:ring-indigo-500 bg-gray-700">
+            <span class="text-sm font-bold text-white">Saya telah membaca dan menyetujui seluruh regulasi, pinalti, dan syarat booking di atas.</span>
+          </label>
+        </div>
+
+        <div id="standard-submit-btn" class="mt-6">
+          <button type="submit" onclick="return validateCryptoForm()" class="w-full bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-bold py-4 px-6 rounded-xl transition-all shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2">
+            <span>Kirim Request Booking</span>
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+            </svg>
+          </button>
+        </div>
+
+        <div id="paypal-button-container" class="mt-6"></div>
+        {% endif %}
+
+      </form>
+    </div>
+  </div>
+</div>
+
+<script src="https://www.paypal.com/sdk/js?client-id={{ paypal_client_id }}&currency=USD"></script>
+<script>
+  document.addEventListener("DOMContentLoaded", function() {
+    const paymentRadios = document.querySelectorAll('input[name="payment_method"]');
+    const standardBtn = document.getElementById("standard-submit-btn");
+    const paypalContainer = document.getElementById("paypal-button-container");
+    const cryptoContainer = document.getElementById("crypto-payment-container");
+    const mainForm = document.querySelector("form");
+    const notesInput = document.querySelector("textarea[name='notes']");
+    const cryptoTxidInput = document.getElementById("crypto-txid");
+    const walletBalanceDisplay = document.getElementById("wallet-balance-display");
+    
+    // Inject user balances from Django
+    const userBalances = {{ user_balances|safe }};
+    let currentCurrency = 'IDR'; // fallback default
+    
+    // Geo-Currency Variables
+    let userLocalCurrency = null;
+    let exchangeRates = null; // Base USD
+    
+    // Hidden inputs for cross-currency backend processing
+    let payCurrencyInput = document.createElement("input");
+    payCurrencyInput.type = "hidden";
+    payCurrencyInput.name = "pay_currency";
+    mainForm.appendChild(payCurrencyInput);
+
+    let exchangeRateInput = document.createElement("input");
+    exchangeRateInput.type = "hidden";
+    exchangeRateInput.name = "exchange_rate";
+    mainForm.appendChild(exchangeRateInput);
+
+    const wallets = {
+      bnb: {
+        address: "0x83d1c5f8aea8d7fc15ca91e60c2368ba7f3bfc0e",
+        network: "BEP20 (Binance Smart Chain)",
+        name: "BNB",
+        icon: "🪙"
+      },
+      usdt: {
+        address: "TR3Kwp47fUGHLN18X1qvZW7BeWSxGCbxsH",
+        network: "TRC20 (Tron)",
+        name: "USDT",
+        icon: "💵"
+      }
+    };
+
+    function updateWalletDisplay() {
+      let selectedRate = document.querySelector('input[name="rate_id"]:checked');
+      if (selectedRate) {
+        let hostCurrency = selectedRate.getAttribute('data-currency') || 'IDR';
+        let hostPrice = parseFloat(selectedRate.getAttribute('data-price') || 0);
+        
+        currentCurrency = hostCurrency;
+        let finalPayPrice = hostPrice;
+        let finalExchangeRate = 1.0;
+        
+        // Cek jika butuh konversi geo-currency
+        if (userLocalCurrency && exchangeRates && exchangeRates[userLocalCurrency] && exchangeRates[hostCurrency] && userLocalCurrency !== hostCurrency) {
+            // Hitung nilai tukar dari hostCurrency ke userLocalCurrency
+            let usdToHost = exchangeRates[hostCurrency];
+            let usdToLocal = exchangeRates[userLocalCurrency];
+            
+            // Tambahkan spread/margin untuk platform antara 0.1% - 0.49% (Misal: 0.49%)
+            let platformSpreadMultiplier = 1.0049; 
+            
+            // misal host 50 USD. local SGD (1.35). 50 / 1 * 1.35 * spread = 67.83
+            finalExchangeRate = (usdToLocal / usdToHost) * platformSpreadMultiplier;
+            finalPayPrice = hostPrice * finalExchangeRate;
+            currentCurrency = userLocalCurrency;
+        }
+
+        // Set hidden inputs
+        payCurrencyInput.value = currentCurrency;
+        exchangeRateInput.value = finalExchangeRate.toFixed(6);
+
+        let bal = userBalances[currentCurrency] || 0;
+        walletBalanceDisplay.innerText = `${currentCurrency} ${bal.toFixed(2)}`;
+      }
+    }
+    
+    async function initGeoCurrency() {
+        try {
+            // 1. Dapatkan lokasi pengguna (Kode Mata Uang)
+            let ipResponse = await fetch('https://ipapi.co/json/');
+            let ipData = await ipResponse.json();
+            if (ipData && ipData.currency) {
+                userLocalCurrency = ipData.currency;
+                
+                // 2. Dapatkan nilai tukar mata uang
+                let ratesResponse = await fetch('https://open.er-api.com/v6/latest/USD');
+                let ratesData = await ratesResponse.json();
+                if (ratesData && ratesData.rates) {
+                    exchangeRates = ratesData.rates;
+                    
+                    // 3. Update UI Rate Box
+                    document.querySelectorAll('input[name="rate_id"]').forEach(radio => {
+                        let hCur = radio.getAttribute('data-currency');
+                        let hPrice = parseFloat(radio.getAttribute('data-price'));
+                        
+                        if (hCur !== userLocalCurrency && exchangeRates[userLocalCurrency] && exchangeRates[hCur]) {
+                            let platformSpreadMultiplier = 1.0049;
+                            let exRate = (exchangeRates[userLocalCurrency] / exchangeRates[hCur]) * platformSpreadMultiplier;
+                            let localPrice = hPrice * exRate;
+                            
+                            let box = radio.nextElementSibling;
+                            let geoDisplay = box.querySelector('.geo-price-display');
+                            if (geoDisplay) {
+                                geoDisplay.innerText = `≈ ${userLocalCurrency} ${localPrice.toFixed(2)}`;
+                                geoDisplay.classList.remove('hidden');
+                            }
+                        }
+                    });
+                    
+                    // 4. Update Wallet Display
+                    updateWalletDisplay();
+                }
+            }
+        } catch (e) {
+            console.log("Geo-Currency API gagal dimuat, menggunakan mata uang asli host.", e);
+        }
+    }
+
+    function togglePaymentUI() {
+      let selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
+      
+      // Hide all first
+      standardBtn.style.display = "none";
+      paypalContainer.style.display = "none";
+      cryptoContainer.style.display = "none";
+
+      if (selectedMethod === "paypal") {
+        paypalContainer.style.display = "block";
+      } else if (selectedMethod === "bnb" || selectedMethod === "usdt") {
+        standardBtn.style.display = "block";
+        cryptoContainer.style.display = "block";
+        
+        let w = wallets[selectedMethod];
+        document.getElementById("crypto-name").innerText = w.name;
+        document.getElementById("crypto-icon").innerText = w.icon;
+        document.getElementById("crypto-network").innerText = w.network;
+        document.getElementById("crypto-address").value = w.address;
+        document.getElementById("crypto-qr").src = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${w.address}`;
+      } else {
+        standardBtn.style.display = "block";
+      }
+    }
+
+    // Expose validation function globally for the submit button
+    window.validateCryptoForm = function() {
+      if (!document.getElementById('booking-agreement').checked) {
+        alert("Anda harus menyetujui Peringatan Regulasi Booking terlebih dahulu.");
+        return false;
+      }
+      
+      let selectedMethod = document.querySelector('input[name="payment_method"]:checked').value;
+      if (selectedMethod === "bnb" || selectedMethod === "usdt") {
+        if (!cryptoTxidInput.value.trim()) {
+          alert(`Harap masukkan TXID bukti transfer ${selectedMethod.toUpperCase()} Anda.`);
+          cryptoTxidInput.focus();
+          return false;
+        }
+        // Append TXID to notes so backend saves it automatically
+        let existingNotes = notesInput.value;
+        notesInput.value = existingNotes + `\n\n[CRYPTO PAYMENT VERIFICATION]\nMethod: ${selectedMethod.toUpperCase()}\nTXID: ${cryptoTxidInput.value.trim()}`;
+      }
+      
+      return confirm("Apakah Anda yakin ingin mengirim request booking ini ke Host?");
+    };
+
+    window.copyCryptoAddress = function() {
+      var copyText = document.getElementById("crypto-address");
+      copyText.select();
+      copyText.setSelectionRange(0, 99999); // For mobile devices
+      navigator.clipboard.writeText(copyText.value);
+      alert("Alamat dompet disalin: " + copyText.value);
+    };
+
+    // Listen to rate changes to update wallet display
+    const rateRadios = document.querySelectorAll('input[name="rate_id"]');
+    rateRadios.forEach(r => r.addEventListener("change", updateWalletDisplay));
+    // Initial call
+    if (rateRadios.length > 0) {
+      if(!document.querySelector('input[name="rate_id"]:checked')) {
+        rateRadios[0].checked = true; // select first by default
+      }
+      updateWalletDisplay();
+    }
+    
+    // Jalankan GeoCurrency di latar belakang
+    initGeoCurrency();
+
+    paymentRadios.forEach(r => r.addEventListener("change", togglePaymentUI));
+    togglePaymentUI();
+
+    paypal.Buttons({
+      createOrder: function(data, actions) {
+        // Cek input form wajib
+        if(!mainForm.reportValidity()) return null;
+        if (!document.getElementById('booking-agreement').checked) {
+          alert("Anda harus menyetujui Peringatan Regulasi Booking terlebih dahulu.");
+          return null;
+        }
+
+        let selectedRate = document.querySelector('input[name="rate_id"]:checked');
+        let amount = selectedRate ? selectedRate.getAttribute('data-price') : "0.00";
+        // Convert to USD temporarily or keep it if currency logic is complex, for PayPal it requires USD.
+        // For simplicity we assume amount is small enough or convert it in backend if needed.
+        
+        return fetch('/api/v1/payments/api/paypal/create-order/', {
+          method: 'post',
+          headers: {
+            'content-type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          },
+          body: JSON.stringify({ amount: amount })
+        }).then(function(res) {
+          return res.json();
+        }).then(function(orderData) {
+          return orderData.id;
+        });
+      },
+      onApprove: function(data, actions) {
+        return fetch('/api/v1/payments/api/paypal/capture-order/', {
+          method: 'post',
+          headers: {
+            'content-type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+          },
+          body: JSON.stringify({ orderID: data.orderID, currency: currentCurrency }) // Top up correct currency!
+        }).then(function(res) {
+          return res.json();
+        }).then(function(orderData) {
+          if(orderData.status === "COMPLETED") {
+            // Selesai paypal, lanjutkan submit form secara natif ke server untuk menyimpan booking
+            // Ganti payment_method radio supaya lolos
+            let paymentInput = document.createElement("input");
+            paymentInput.type = "hidden";
+            paymentInput.name = "paypal_transaction_id";
+            paymentInput.value = data.orderID;
+            mainForm.appendChild(paymentInput);
+            mainForm.submit();
+          } else {
+            alert("Transaksi Gagal.");
+          }
+        });
+      }
+    }).render('#paypal-button-container');
+  });
+</script>
+{% endblock %}

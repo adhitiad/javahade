@@ -1,0 +1,318 @@
+{% extends "booking/base.html" %}
+{% load booking_tags %}
+
+{% block title %}
+Detail Booking — {{ booking.room.name }} — Kreativa Booking
+{% endblock %}
+
+{% block content %}
+
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+  <!-- Back Button -->
+  <a
+    href="{% url 'booking:my_bookings' %}"
+    class="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-indigo-400 transition-colors mb-6"
+  >
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        stroke-width="2"
+        d="M15 19l-7-7 7-7"
+      />
+    </svg>
+    Kembali ke Booking Saya
+  </a>
+
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <!-- ===== DETAIL BOOKING (2 kolom) ===== -->
+    <div class="lg:col-span-2 space-y-6">
+      <!-- Booking Card -->
+      <div class="glass rounded-2xl p-6">
+        <div class="flex items-center justify-between mb-6">
+          <h1 class="text-2xl font-bold text-white">{{ booking.room.name }}</h1>
+          <span
+            class="px-3 py-1.5 text-xs font-semibold rounded-full border {{ booking.status|status_color }}"
+          >
+            {{ booking.status|status_icon }} {{ booking.get_status_display }}
+          </span>
+        </div>
+
+        <div class="space-y-4">
+          <!-- Tanggal -->
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03]">
+            <div
+              class="w-10 h-10 rounded-lg bg-indigo-500/20 flex items-center justify-center flex-shrink-0"
+            >
+              <svg
+                class="w-5 h-5 text-indigo-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500">Tanggal</p>
+              <p class="text-sm font-semibold text-white">
+                {{ booking.date|date:"l, d F Y" }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Waktu -->
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03]">
+            <div
+              class="w-10 h-10 rounded-lg bg-emerald-500/20 flex items-center justify-center flex-shrink-0"
+            >
+              <svg
+                class="w-5 h-5 text-emerald-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500">Waktu</p>
+              <p class="text-sm font-semibold text-white">
+                {{ booking.start_time|time:"H:i" }} — {{
+                booking.end_time|time:"H:i" }}
+                <span class="text-gray-400 font-normal"
+                  >({{ booking.duration_hours }} jam)</span
+                >
+              </p>
+            </div>
+          </div>
+
+          <!-- Lokasi -->
+          {% if booking.room.location %}
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03]">
+            <div
+              class="w-10 h-10 rounded-lg bg-purple-500/20 flex items-center justify-center flex-shrink-0"
+            >
+              <svg
+                class="w-5 h-5 text-purple-400"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
+                />
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"
+                />
+              </svg>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500">Lokasi</p>
+              <p class="text-sm font-semibold text-white">
+                {{ booking.room.location }}
+              </p>
+            </div>
+          </div>
+          {% endif %}
+
+          <!-- Biaya -->
+          <div class="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03]">
+            <div
+              class="w-10 h-10 rounded-lg bg-amber-500/20 flex items-center justify-center flex-shrink-0"
+            >
+              <span class="text-amber-400 text-lg">💰</span>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500">Total Biaya</p>
+              <p class="text-sm font-semibold text-white">
+                {{ booking.total_cost|rupiah }}
+              </p>
+            </div>
+          </div>
+
+          <!-- Catatan -->
+          {% if booking.notes %}
+          <div class="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03]">
+            <div
+              class="w-10 h-10 rounded-lg bg-gray-500/20 flex items-center justify-center flex-shrink-0"
+            >
+              <span class="text-gray-400 text-lg">📝</span>
+            </div>
+            <div>
+              <p class="text-xs text-gray-500">Catatan</p>
+              <p class="text-sm text-gray-300">{{ booking.notes }}</p>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+
+        <!-- Cancel Button -->
+        {% if booking.status == 'confirmed' or booking.status == 'pending' %}
+        <div class="mt-6 pt-4 border-t border-gray-700/50">
+          <form
+            method="POST"
+            action="{% url 'booking:booking_cancel' booking.id %}"
+            onsubmit="
+              return confirm(
+                'Apakah Anda yakin ingin membatalkan booking ini?',
+              );
+            "
+          >
+            {% csrf_token %}
+            <button
+              type="submit"
+              class="w-full px-4 py-2.5 bg-red-500/10 text-red-400 font-medium rounded-xl border border-red-500/20 hover:bg-red-500/20 hover:text-red-300 transition-all duration-200"
+            >
+              ❌ Batalkan Booking
+            </button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+
+      <!-- Booking ID -->
+      <div class="glass rounded-2xl p-4">
+        <p class="text-xs text-gray-500">Booking ID</p>
+        <p class="text-xs font-mono text-gray-400 mt-1 break-all">
+          {{ booking.id }}
+        </p>
+        <p class="text-xs text-gray-500 mt-2">
+          Dibuat: {{ booking.created_at|date:"d M Y H:i" }}
+        </p>
+      </div>
+    </div>
+
+    <!-- ===== CHAT WIDGET (3 kolom) ===== -->
+    <div class="lg:col-span-3">
+      <div
+        class="glass rounded-2xl overflow-hidden flex flex-col"
+        style="height: 600px"
+      >
+        <!-- Chat Header -->
+        <div
+          class="px-6 py-4 border-b border-gray-700/50 flex items-center justify-between flex-shrink-0"
+        >
+          <div class="flex items-center gap-3">
+            <div
+              class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center"
+            >
+              <svg
+                class="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
+              </svg>
+            </div>
+            <div>
+              <h2 class="text-sm font-semibold text-white">Chat Booking</h2>
+              <p class="text-xs text-gray-400">{{ booking.room.name }}</p>
+            </div>
+          </div>
+          <div class="flex items-center gap-2">
+            <span
+              id="chat-status"
+              class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-gray-700/50 text-gray-400"
+            >
+              <span
+                id="status-dot"
+                class="w-2 h-2 rounded-full bg-gray-500"
+              ></span>
+              <span id="status-text">Menghubungkan...</span>
+            </span>
+          </div>
+        </div>
+
+        <!-- Chat Messages Area -->
+        <div
+          id="chat-messages"
+          class="flex-1 overflow-y-auto px-6 py-4 space-y-4"
+        >
+          <!-- Pesan sistem awal -->
+          <div class="text-center">
+            <span
+              class="inline-block px-4 py-2 rounded-full bg-gray-800/50 text-xs text-gray-500"
+            >
+              💬 Selamat datang di chat room booking — {{ booking.room.name }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Chat Input -->
+        <div class="px-6 py-4 border-t border-gray-700/50 flex-shrink-0">
+          <form id="chat-form" class="flex items-center gap-3">
+            <input
+              type="text"
+              id="chat-input"
+              class="flex-1 px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200"
+              placeholder="Ketik pesan..."
+              maxlength="1000"
+              autocomplete="off"
+            />
+            <button
+              type="submit"
+              id="chat-send-btn"
+              class="p-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all duration-200 shadow-lg shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled
+            >
+              <svg
+                class="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+            </button>
+          </form>
+          <p id="chat-error" class="text-xs text-red-400 mt-2 hidden"></p>
+          <p class="text-xs text-gray-600 mt-2">
+            🔒 Pesan terenkripsi • Rate limit: 10 pesan/menit
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %} {% block extra_js %}
+<!-- Load WebSocket Chat Client -->
+<script>
+  // Konfigurasi chat yang dikirim dari server (aman via template)
+  const CHAT_CONFIG = {
+    wsUrl: "{{ chat_ws_url }}",
+    roomId: "{{ booking.id }}",
+    tokenUrl: '{% url "booking:token_api" %}',
+    currentUser: "{{ user.username }}",
+    currentUserId: "{{ user.id }}",
+  };
+</script>
+<script src="{% static 'booking/js/chat.js' %}"></script>
+{% endblock %}

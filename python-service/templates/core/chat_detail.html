@@ -1,0 +1,141 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Chat dengan {{ other_user.username }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-8 h-[85vh] flex flex-col">
+    <!-- Header -->
+    <div class="glass p-4 rounded-t-3xl border border-white/5 border-b-0 flex items-center gap-4 bg-gray-900/80 z-10">
+        <a href="{% url 'core_ui:chat_inbox' %}" class="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center text-white hover:bg-white/10 transition">
+            ←
+        </a>
+        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-indigo-500 to-blue-500 flex items-center justify-center font-bold text-lg text-white">
+            {{ other_user.username|make_list|first|upper }}
+        </div>
+        <div>
+            <h2 class="text-xl font-bold text-white">{{ other_user.username }}</h2>
+            <p class="text-xs text-emerald-400 font-bold flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span> Online
+            </p>
+        </div>
+    </div>
+
+    <!-- Chat History -->
+    <div class="glass flex-1 border border-white/5 bg-black/40 overflow-y-auto p-4 flex flex-col gap-4" id="chat-box">
+        <div class="text-center p-4">
+            <p class="text-xs text-gray-500 uppercase tracking-widest font-bold">Mulai Percakapan Aman</p>
+            <p class="text-xs text-gray-600 mt-1">Chat diawasi oleh AI Auto-Moderator. Dilarang mengirim konten sensitif tantang LGBT Kecuali Lesbian/GL.</p>
+        </div>
+    </div>
+
+    <!-- Chat Input -->
+    <div class="glass p-4 rounded-b-3xl border border-white/5 border-t-0 bg-gray-900/80">
+        <form id="chat-form" class="flex items-center gap-3">
+            <input type="text" id="chat-input" required autocomplete="off" placeholder="Tulis pesan..."
+                   class="flex-1 px-5 py-3 bg-white/5 border border-white/10 rounded-full text-white focus:ring-2 focus:ring-blue-500 transition-all">
+            <button type="submit" class="w-12 h-12 bg-blue-600 hover:bg-blue-500 text-white rounded-full flex items-center justify-center transition-all shadow-lg shadow-blue-500/25">
+                ➤
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    const CHAT_SERVICE_URL = "http://localhost:8081";
+    const CHAT_WS_URL = "ws://localhost:8081/ws/chat";
+    const TOKEN = "{{ chat_token }}";
+    const CURRENT_USER_ID = "{{ request.user.id }}";
+    const OTHER_USER_ID = "{{ other_user.id }}";
+    
+    let ws;
+    let currentRoomId;
+
+    const chatBox = document.getElementById("chat-box");
+    const chatForm = document.getElementById("chat-form");
+    const chatInput = document.getElementById("chat-input");
+
+    function appendMessage(msg, isMe) {
+        const bubble = document.createElement("div");
+        bubble.className = `max-w-[75%] p-4 rounded-2xl text-sm ${isMe ? 'bg-blue-600 text-white self-end rounded-tr-none' : 'bg-gray-800 border border-white/10 text-gray-200 self-start rounded-tl-none'}`;
+        bubble.textContent = msg;
+        chatBox.appendChild(bubble);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    function appendSystemError(msg) {
+        const bubble = document.createElement("div");
+        bubble.className = `max-w-[80%] p-3 rounded-xl text-xs bg-red-500/10 border border-red-500/30 text-red-400 self-center text-center font-bold`;
+        bubble.textContent = "⚠️ " + msg;
+        chatBox.appendChild(bubble);
+        chatBox.scrollTop = chatBox.scrollHeight;
+    }
+
+    // Step 1: Initialize Room via REST API
+    fetch(`${CHAT_SERVICE_URL}/api/v1/rooms`, {
+        method: "POST",
+        headers: {
+            "Authorization": `Bearer ${TOKEN}`,
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            type: "direct",
+            name: "Direct Chat",
+            participants: [CURRENT_USER_ID, OTHER_USER_ID]
+        })
+    })
+    .then(res => res.json())
+    .then(room => {
+        currentRoomId = room.id;
+        connectWebSocket();
+    })
+    .catch(err => {
+        console.error("Gagal membuat room", err);
+        appendSystemError("Gagal terhubung ke server chat.");
+    });
+
+    // Step 2: Connect WebSocket
+    function connectWebSocket() {
+        ws = new WebSocket(`${CHAT_WS_URL}?room_id=${currentRoomId}&token=${TOKEN}`);
+
+        ws.onopen = () => {
+            console.log("WebSocket terhubung.");
+        };
+
+        ws.onmessage = (e) => {
+            const data = JSON.parse(e.data);
+            if (data.type === "message") {
+                const isMe = data.payload.sender_id === CURRENT_USER_ID;
+                appendMessage(data.payload.content, isMe);
+            } else if (data.type === "error") {
+                // Pesan ditolak oleh moderator
+                appendSystemError(data.payload.message);
+            }
+        };
+
+        ws.onclose = () => {
+            appendSystemError("Koneksi terputus. Muat ulang halaman.");
+        };
+    }
+
+    // Step 3: Send Message
+    chatForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        const msgPayload = {
+            type: "message",
+            room_id: currentRoomId,
+            payload: {
+                type: "text",
+                content: text
+            }
+        };
+
+        ws.send(JSON.stringify(msgPayload));
+        chatInput.value = "";
+    });
+</script>
+{% endblock %}

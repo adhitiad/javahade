@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/v1/auth/
+Disallow: /api/v1/payments/
+
+Sitemap: https://kreativa.com/sitemap.xml

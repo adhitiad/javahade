@@ -1,0 +1,123 @@
+{% extends "booking/base.html" %}
+{% load static %}
+
+{% block title %}Pencarian: {{ query }} — Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 animate-fade-in">
+    <div class="mb-10 text-center">
+        <h1 class="text-3xl font-bold text-white mb-2">Hasil Pencarian</h1>
+        <p class="text-gray-400">Menampilkan hasil untuk: <span class="text-purple-400 font-semibold">"{{ query }}"</span></p>
+    </div>
+
+    {% if not query %}
+        <div class="text-center py-20 glass rounded-3xl border border-white/5">
+            <span class="text-6xl mb-4 block">🔍</span>
+            <h2 class="text-2xl font-bold text-white mb-2">Mulai Pencarian</h2>
+            <p class="text-gray-400">Ketikkan nama Host atau judul Live Stream di kolom pencarian.</p>
+        </div>
+    {% elif not hosts and not streams %}
+        <div class="text-center py-20 glass rounded-3xl border border-white/5">
+            <span class="text-6xl mb-4 block">🤷</span>
+            <h2 class="text-2xl font-bold text-white mb-2">Tidak Ditemukan</h2>
+            <p class="text-gray-400">Maaf, kami tidak menemukan Host atau Live Stream yang cocok dengan "{{ query }}".</p>
+        </div>
+    {% else %}
+        
+        <!-- SECTION: HOSTS -->
+        {% if hosts %}
+        <div class="mb-12">
+            <div class="flex items-center gap-3 mb-6 border-b border-gray-800 pb-4">
+                <span class="text-2xl">🌟</span>
+                <h2 class="text-2xl font-bold text-white">Host Ditemukan</h2>
+                <span class="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-full text-sm font-bold ml-auto">{{ hosts|length }}</span>
+            </div>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                {% for host in hosts %}
+                <a href="{% url 'core_ui:creator_profile' host.username %}" class="block group">
+                    <div class="glass p-5 rounded-2xl border border-white/5 hover:bg-white/5 transition-all h-full flex flex-col items-center text-center">
+                        {% if host.avatar %}
+                            <img src="{{ host.avatar.url }}" alt="{{ host.username }}" class="w-24 h-24 rounded-full object-cover border-2 border-purple-500/50 mb-4 group-hover:scale-105 transition-transform">
+                        {% else %}
+                            <div class="w-24 h-24 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center text-3xl font-bold text-white border-2 border-purple-500/50 mb-4 group-hover:scale-105 transition-transform">
+                                {{ host.username|make_list|first|upper }}
+                            </div>
+                        {% endif %}
+                        <h3 class="text-lg font-bold text-white">{{ host.creator_profile.display_name|default:host.username }}</h3>
+                        <p class="text-sm text-gray-400 mb-2">@{{ host.username }}</p>
+                        {% if host.creator_profile.category %}
+                        <span class="px-3 py-1 bg-white/5 text-gray-300 rounded-full text-xs mt-auto">{{ host.creator_profile.get_category_display }}</span>
+                        {% endif %}
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- SECTION: LIVE STREAMS -->
+        {% if streams %}
+        <div>
+            <div class="flex items-center gap-3 mb-6 border-b border-gray-800 pb-4">
+                <span class="text-2xl">🔴</span>
+                <h2 class="text-2xl font-bold text-white">Live Stream Ditemukan</h2>
+                <span class="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm font-bold ml-auto">{{ streams|length }}</span>
+            </div>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {% for stream in streams %}
+                <a href="{% url 'streaming_ui:detail' stream.id %}" class="block group">
+                    <div class="glass rounded-2xl border border-white/5 overflow-hidden hover:bg-white/5 transition-all">
+                        <div class="aspect-video bg-gray-800 relative">
+                            {% if stream.cover_image %}
+                                <img src="{{ stream.cover_image.url }}" alt="Cover" class="w-full h-full object-cover">
+                            {% else %}
+                                <div class="w-full h-full bg-gradient-to-br from-indigo-900 to-purple-900 flex items-center justify-center">
+                                    <span class="text-4xl">🎥</span>
+                                </div>
+                            {% endif %}
+                            
+                            <!-- Badges -->
+                            <div class="absolute top-3 left-3 flex flex-col gap-2">
+                                {% if stream.status == 'live' %}
+                                <span class="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded flex items-center gap-1">
+                                    <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> LIVE
+                                </span>
+                                {% else %}
+                                <span class="px-2 py-1 bg-indigo-500 text-white text-xs font-bold rounded">
+                                    UPCOMING
+                                </span>
+                                {% endif %}
+                                
+                                {% if stream.is_family_only %}
+                                <span class="px-2 py-1 bg-yellow-500 text-white text-xs font-bold rounded flex items-center gap-1">
+                                    🏢 Family Only
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            <h3 class="font-bold text-lg text-white mb-1 group-hover:text-purple-400 transition-colors">{{ stream.title }}</h3>
+                            <div class="flex items-center justify-between mt-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 flex items-center justify-center text-[10px] text-white">
+                                        {{ stream.host.username|make_list|first|upper }}
+                                    </div>
+                                    <span class="text-sm text-gray-300">{{ stream.host.username }}</span>
+                                </div>
+                                <span class="text-sm text-emerald-400 font-bold">
+                                    {% if stream.ticket_price_usd > 0 %}${{ stream.ticket_price_usd }}{% else %}GRATIS{% endif %}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    {% endif %}
+</div>
+{% endblock %}

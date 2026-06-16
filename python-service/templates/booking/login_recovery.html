@@ -1,0 +1,73 @@
+{% extends "booking/base.html" %} 
+{% block title %}Masuk dengan Kode Pemulihan — Kreativa{% endblock %} 
+
+{% block content %}
+<div class="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden">
+  <!-- Background decorations -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div class="absolute -top-40 -right-40 w-80 h-80 rounded-full bg-red-600/10 blur-3xl"></div>
+    <div class="absolute -bottom-40 -left-40 w-80 h-80 rounded-full bg-orange-600/10 blur-3xl"></div>
+    <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-brand-500/5 blur-3xl animate-pulse-slow"></div>
+  </div>
+
+  <div class="w-full max-w-md relative animate-fade-in">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-16 h-16 rounded-full bg-red-500/20 text-red-400 mb-4 border border-red-500/30 shadow-lg shadow-red-500/20">
+        <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg>
+      </div>
+      <h1 class="text-3xl font-bold text-white">Login Pemulihan</h1>
+      <p class="text-gray-400 mt-2">Bypass password menggunakan Kode Pemulihan Anda</p>
+    </div>
+
+    <!-- Login Form -->
+    <div class="glass rounded-2xl p-8 shadow-2xl border border-red-500/20">
+      <form method="POST" action="{% url 'booking:login_recovery' %}" id="login-recovery-form">
+        {% csrf_token %} 
+        
+        {% if messages %}
+        <div class="mb-6">
+            {% for message in messages %}
+            <div class="p-4 rounded-xl {% if message.tags == 'error' %}bg-red-500/10 border border-red-500/30 text-red-400{% else %}bg-indigo-500/10 border border-indigo-500/30 text-indigo-400{% endif %} text-sm">
+                {{ message }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <div class="space-y-5">
+          <!-- Username -->
+          <div>
+            <label for="username" class="block text-sm font-medium text-gray-300 mb-2">Username atau Email</label>
+            <input type="text" name="username" id="username" required class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
+          </div>
+
+          <!-- Code -->
+          <div>
+            <label for="recovery_code" class="block text-sm font-medium text-gray-300 mb-2">Kode Pemulihan</label>
+            <input type="text" name="recovery_code" id="recovery_code" required placeholder="00" class="w-full bg-gray-900/50 border border-gray-700 rounded-xl px-4 py-3 text-white font-mono tracking-widest focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all">
+            <p class="text-xs text-gray-500 mt-2">Masukkan 1 dari 12 angka pemulihan Anda. Kode yang digunakan akan dihanguskan.</p>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button type="submit" class="w-full mt-8 px-6 py-3.5 bg-gradient-to-r from-red-600 to-orange-600 text-white font-bold rounded-xl hover:from-red-500 hover:to-orange-500 focus:ring-4 focus:ring-red-500/30 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-red-500/25 hover:shadow-red-500/40">
+          Verifikasi & Masuk
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-4 my-6">
+        <div class="flex-1 h-px bg-gray-700"></div>
+        <span class="text-xs text-gray-500 uppercase tracking-wider">kembali ke</span>
+        <div class="flex-1 h-px bg-gray-700"></div>
+      </div>
+
+      <!-- Login Link -->
+      <a href="{% url 'booking:login' %}" class="block text-center w-full px-6 py-3 rounded-xl bg-white/5 text-gray-300 font-medium hover:bg-white/10 hover:text-white transition-all border border-white/10">
+        Login Biasa
+      </a>
+    </div>
+  </div>
+</div>
+{% endblock %}

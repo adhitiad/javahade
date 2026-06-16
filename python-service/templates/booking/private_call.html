@@ -1,0 +1,246 @@
+{% extends "booking/base.html" %}
+
+{% block title %}
+Private Call 1-on-1 — Kreativa Booking
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+    
+    <div class="mb-6 flex justify-between items-center">
+        <div>
+            <h1 class="text-3xl font-bold text-white">Sesi Privat 1-on-1</h1>
+            <p class="text-gray-400 mt-1">Host: @{{ booking.host.username }} | Client: @{{ booking.user.username }}</p>
+        </div>
+        <a href="{% url 'booking:dashboard' %}" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white font-bold rounded-xl transition-colors">
+            Keluar Call
+        </a>
+    </div>
+
+    <!-- Video Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative">
+        
+        <!-- Local Video -->
+        <div class="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-white/10 group">
+            <video id="localVideo" class="w-full h-full object-cover transform scale-x-[-1]" autoplay muted playsinline></video>
+            
+            <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            
+            <div class="absolute bottom-4 left-4 z-10">
+                <span class="px-3 py-1 rounded-lg bg-indigo-500 text-white text-xs font-bold">Anda</span>
+            </div>
+            
+            <!-- Controls -->
+            <div class="absolute bottom-4 right-4 z-10 flex gap-2">
+                <button id="btn-cam" class="p-3 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur text-white border border-white/20 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                </button>
+                <button id="btn-mic" class="p-3 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur text-white border border-white/20 transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Remote Video -->
+        <div class="relative w-full aspect-video bg-gray-900 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex items-center justify-center">
+            
+            <div id="remote-placeholder" class="text-center animate-pulse">
+                <div class="w-20 h-20 mx-auto rounded-full bg-gray-800 flex items-center justify-center text-3xl mb-4">
+                    ⏳
+                </div>
+                <p class="text-gray-400 font-medium">Menunggu partner bergabung...</p>
+            </div>
+            
+            <video id="remoteVideo" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+            
+            <div class="absolute bottom-4 left-4 z-10 hidden" id="remote-name-tag">
+                <span class="px-3 py-1 rounded-lg bg-emerald-500 text-white text-xs font-bold">
+                    {% if is_host %}{{ booking.user.username }}{% else %}{{ booking.host.username }}{% endif %}
+                </span>
+            </div>
+            
+            <div class="absolute top-4 right-4 z-10 flex gap-2">
+                <span id="conn-status" class="px-3 py-1 rounded-lg bg-gray-800 text-gray-400 text-xs font-bold flex items-center gap-2 border border-gray-700">
+                    <span class="w-2 h-2 rounded-full bg-yellow-500 animate-pulse"></span>
+                    Signaling...
+                </span>
+            </div>
+            
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const BOOKING_ID = "{{ booking.id }}";
+    const IS_HOST = {{ is_host|yesno:"true,false" }};
+    const CURRENT_USER = "{{ request.user.username }}";
+    
+    // Go booking-service WebRTC Signaling endpoint
+    // Requires a token in a real app, here we pass username query just for log identification
+    const SIGNALING_URL = `ws://localhost:8080/ws/stream/${BOOKING_ID}/signal?username=${encodeURIComponent(CURRENT_USER)}`;
+    
+    let localStream;
+    let peerConnection;
+    let ws;
+    
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    const remotePlaceholder = document.getElementById('remote-placeholder');
+    const remoteNameTag = document.getElementById('remote-name-tag');
+    const connStatus = document.getElementById('conn-status');
+    
+    // STUN servers
+    const pcConfig = {
+        iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+        ]
+    };
+    
+    function setConnStatus(text, colorClass) {
+        connStatus.innerHTML = `<span class="w-2 h-2 rounded-full ${colorClass}"></span> ${text}`;
+    }
+
+    async function init() {
+        try {
+            // 1. Get Camera
+            localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            localVideo.srcObject = localStream;
+            
+            // 2. Init WebRTC PeerConnection
+            peerConnection = new RTCPeerConnection(pcConfig);
+            
+            // Add local tracks to PC
+            localStream.getTracks().forEach(track => {
+                peerConnection.addTrack(track, localStream);
+            });
+            
+            // Handle remote track arrival
+            peerConnection.ontrack = (event) => {
+                console.log("Remote track received!");
+                remotePlaceholder.classList.add('hidden');
+                remoteVideo.classList.remove('hidden');
+                remoteNameTag.classList.remove('hidden');
+                remoteVideo.srcObject = event.streams[0];
+            };
+            
+            // Handle ICE candidates
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) {
+                    sendSignal('webrtc_ice_candidate', { candidate: event.candidate });
+                }
+            };
+            
+            peerConnection.onconnectionstatechange = () => {
+                switch(peerConnection.connectionState) {
+                    case "connected":
+                        setConnStatus("Tersambung", "bg-emerald-500");
+                        break;
+                    case "disconnected":
+                    case "failed":
+                        setConnStatus("Terputus", "bg-red-500 animate-pulse");
+                        break;
+                }
+            };
+
+            // 3. Connect Signaling WebSocket
+            connectSignaling();
+            
+        } catch (err) {
+            console.error("Error accessing media devices.", err);
+            alert("Gagal mengakses kamera/mikrofon!");
+        }
+    }
+    
+    function sendSignal(type, payload) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: type, payload: payload }));
+        }
+    }
+    
+    function connectSignaling() {
+        ws = new WebSocket(SIGNALING_URL);
+        
+        ws.onopen = () => {
+            setConnStatus("Signaling Tersambung", "bg-blue-500");
+            
+            if (IS_HOST) {
+                // Host starts the stream room
+                sendSignal("stream_start", { host: CURRENT_USER });
+            } else {
+                // Client joins
+                sendSignal("viewer_join", { username: CURRENT_USER });
+            }
+        };
+        
+        ws.onmessage = async (event) => {
+            const data = JSON.parse(event.data);
+            
+            if (data.type === 'viewer_joined' && IS_HOST) {
+                // Client joined, Host creates Offer!
+                console.log("Client joined! Creating offer...");
+                try {
+                    const offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    sendSignal('webrtc_offer', { sdp: offer });
+                } catch (e) {
+                    console.error("Create offer error", e);
+                }
+            } 
+            else if (data.type === 'webrtc_offer' && !IS_HOST) {
+                // Client receives Offer, creates Answer
+                console.log("Offer received! Creating answer...");
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.payload.sdp));
+                    const answer = await peerConnection.createAnswer();
+                    await peerConnection.setLocalDescription(answer);
+                    sendSignal('webrtc_answer', { sdp: answer });
+                } catch (e) {
+                    console.error("Create answer error", e);
+                }
+            }
+            else if (data.type === 'webrtc_answer' && IS_HOST) {
+                // Host receives Answer
+                console.log("Answer received!");
+                try {
+                    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.payload.sdp));
+                } catch (e) {
+                    console.error("Set remote desc error", e);
+                }
+            }
+            else if (data.type === 'webrtc_ice_candidate') {
+                // Both receive ICE candidates
+                try {
+                    await peerConnection.addIceCandidate(new RTCIceCandidate(data.payload.candidate));
+                } catch (e) {
+                    console.error("Add ICE candidate error", e);
+                }
+            }
+        };
+        
+        ws.onclose = () => {
+            setConnStatus("Signaling Terputus", "bg-red-500 animate-pulse");
+        };
+    }
+    
+    // Toggle Buttons
+    let camEnabled = true;
+    document.getElementById('btn-cam').addEventListener('click', () => {
+        camEnabled = !camEnabled;
+        localStream.getVideoTracks().forEach(t => t.enabled = camEnabled);
+        document.getElementById('btn-cam').classList.toggle('bg-red-500/50', !camEnabled);
+    });
+    
+    let micEnabled = true;
+    document.getElementById('btn-mic').addEventListener('click', () => {
+        micEnabled = !micEnabled;
+        localStream.getAudioTracks().forEach(t => t.enabled = micEnabled);
+        document.getElementById('btn-mic').classList.toggle('bg-red-500/50', !micEnabled);
+    });
+
+    // Start
+    init();
+</script>
+{% endblock %}

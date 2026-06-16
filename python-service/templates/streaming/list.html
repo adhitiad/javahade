@@ -1,0 +1,83 @@
+{% extends "booking/base.html" %}
+{% load static %}
+
+{% block title %}Live Streaming & Jadwal — Kreativa Platform{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-fade-in">
+
+    <!-- Header -->
+    <div class="mb-10 text-center">
+        <div class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-red-500 to-rose-600 shadow-xl shadow-red-500/25 mb-4 animate-pulse">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+        </div>
+        <h1 class="text-3xl font-bold text-white">Live Streaming & Jadwal Privat</h1>
+        <p class="text-gray-400 mt-2">Temukan sesi live creator favoritmu atau pesan slot privat</p>
+    </div>
+
+    <!-- ===== LIVE STREAMS ===== -->
+    <div class="mb-12">
+        <div class="flex items-center gap-3 mb-6">
+            <h2 class="text-2xl font-bold text-white">🔴 Sedang Live</h2>
+            <span class="px-3 py-1 rounded-full bg-red-500/20 text-red-400 text-xs font-bold border border-red-500/30">
+                <span class="inline-block w-2 h-2 rounded-full bg-red-500 mr-1 animate-ping"></span> Live Now
+            </span>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for stream in streams %}
+            <div class="glass rounded-2xl overflow-hidden group hover:-translate-y-1 transition-all border border-white/5 hover:border-white/20">
+                <div class="relative h-48 bg-gray-900">
+                    {% if stream.cover_image %}
+                        <img src="{{ stream.cover_image.url }}" class="w-full h-full object-cover">
+                    {% else %}
+                        <div class="w-full h-full flex items-center justify-center text-5xl opacity-50">🎥</div>
+                    {% endif %}
+                    
+                    <div class="absolute top-2 left-2 px-2 py-1 bg-black/60 backdrop-blur rounded text-xs font-bold text-white uppercase flex items-center gap-2">
+                        {% if stream.status == 'live' %}
+                            <span class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span> LIVE
+                        {% elif stream.status == 'upcoming' %}
+                            <span class="w-2 h-2 rounded-full bg-blue-500"></span> UPCOMING
+                        {% else %}
+                            ENDED
+                        {% endif %}
+                    </div>
+                    
+                    {% if stream.is_family_only %}
+                    <div class="absolute top-2 right-2 px-2 py-1 bg-indigo-500/80 backdrop-blur rounded text-xs font-bold text-white uppercase flex items-center gap-1">
+                        🏢 {{ stream.family_group.name }}
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="p-4">
+                    <h3 class="font-bold text-lg text-white mb-1 truncate">{{ stream.title }}</h3>
+                    <p class="text-sm text-gray-400 mb-3">Oleh <span class="font-bold text-white">@{{ stream.host.username }}</span></p>
+                    
+                    <div class="flex items-center justify-between mt-4">
+                        <div class="text-sm font-bold {% if stream.ticket_price_usd > 0 %}text-emerald-400{% else %}text-gray-400{% endif %}">
+                            {% if stream.ticket_price_usd > 0 %}
+                                $ {{ stream.ticket_price_usd }}
+                            {% else %}
+                                GRATIS
+                            {% endif %}
+                        </div>
+                        <a href="{% url 'streaming_ui:detail' stream.id %}" class="px-4 py-2 bg-white/10 hover:bg-white/20 text-white text-sm font-bold rounded-xl transition-colors">
+                            Lihat Detail
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="col-span-full text-center py-12">
+                <div class="text-5xl mb-4 opacity-30">📭</div>
+                <p class="text-gray-400 font-bold">Belum ada live stream yang tersedia saat ini.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+</div>
+{% endblock %}

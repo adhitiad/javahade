@@ -1,0 +1,163 @@
+{% extends "booking/base.html" %} 
+{% block title %}
+Daftar — Kreativa Booking 
+{% endblock %} 
+
+{% block content %}
+<div
+  class="min-h-screen flex items-center justify-center px-4 py-12 relative overflow-hidden"
+>
+  <!-- Background decorations -->
+  <div class="absolute inset-0 overflow-hidden pointer-events-none">
+    <div
+      class="absolute -top-40 -left-40 w-80 h-80 rounded-full bg-purple-600/10 blur-3xl"
+    ></div>
+    <div
+      class="absolute -bottom-40 -right-40 w-80 h-80 rounded-full bg-indigo-600/10 blur-3xl"
+    ></div>
+  </div>
+
+  <div class="w-full max-w-md relative animate-fade-in">
+    <!-- Logo -->
+    <div class="text-center mb-8">
+      <div
+        class="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 shadow-xl shadow-purple-500/25 mb-4"
+      >
+        <svg
+          class="w-8 h-8 text-white"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            stroke-width="2"
+            d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+          />
+        </svg>
+      </div>
+      <h1 class="text-3xl font-bold gradient-text">Buat Akun Baru</h1>
+      <p class="text-gray-400 mt-2">Bergabung dengan Kreativa Booking</p>
+    </div>
+
+    <!-- Register Form -->
+    <div class="glass rounded-2xl p-8 shadow-2xl">
+      <form
+        method="POST"
+        action="{% url 'booking:register' %}"
+        id="register-form"
+      >
+        {% csrf_token %} {% if form.errors %}
+        <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30">
+          <div class="flex items-start gap-3">
+            <span class="text-lg">❌</span>
+            <div>
+              <p class="text-sm font-semibold text-red-400">Registrasi Gagal</p>
+              <!-- prettier-ignore -->
+              <div>
+                {% for field, errors in form.errors.items %}
+                  {% for error in errors %}
+                    <p class="text-sm text-red-300/80 mt-1">{{ error }}</p>
+                  {% endfor %}
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="space-y-5">
+          <!-- Username -->
+          <div>
+            <label
+              for="id_username"
+              class="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Username
+            </label>
+            {{ form.username }}
+            <p class="text-xs text-gray-500 mt-1">
+              Huruf, angka, dan @/./+/-/_ saja.
+            </p>
+          </div>
+
+          <!-- Email -->
+          <div>
+            <label
+              for="id_email"
+              class="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Email
+            </label>
+            {{ form.email }}
+          </div>
+
+          <!-- Gender -->
+          <div>
+            <label
+              for="id_gender"
+              class="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Jenis Kelamin
+            </label>
+            {{ form.gender }}
+          </div>
+
+          <!-- Password -->
+          <div>
+            <label
+              for="id_password1"
+              class="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Password
+            </label>
+            {{ form.password1 }}
+            <p class="text-xs text-gray-500 mt-1">
+              Minimal 8 karakter, campuran huruf dan angka.
+            </p>
+          </div>
+
+          <!-- Konfirmasi Password -->
+          <div>
+            <label
+              for="id_password2"
+              class="block text-sm font-medium text-gray-300 mb-2"
+            >
+              Konfirmasi Password
+            </label>
+            {{ form.password2 }}
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button
+          type="submit"
+          id="register-btn"
+          class="w-full mt-8 px-6 py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-semibold rounded-xl hover:from-purple-500 hover:to-pink-500 focus:ring-4 focus:ring-purple-500/30 transform hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40"
+        >
+          Buat Akun
+        </button>
+      </form>
+
+      <!-- Divider -->
+      <div class="flex items-center gap-4 my-6">
+        <div class="flex-1 h-px bg-gray-700"></div>
+        <span class="text-xs text-gray-500 uppercase tracking-wider">atau</span>
+        <div class="flex-1 h-px bg-gray-700"></div>
+      </div>
+
+      <!-- Login Link -->
+      <p class="text-center text-sm text-gray-400">
+        Sudah punya akun?
+        <a
+          href="{% url 'booking:login' %}"
+          class="text-purple-400 hover:text-purple-300 font-semibold transition-colors"
+        >
+          Masuk di Sini
+        </a>
+      </p>
+    </div>
+  </div>
+</div>
+{% endblock %}

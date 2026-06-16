@@ -1,0 +1,230 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Dompet Finansial Host — Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto px-4 py-8">
+    <div class="mb-10">
+        <h1 class="text-3xl md:text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 mb-2">
+            Dompet Finansial Anda
+        </h1>
+        <p class="text-gray-400">Pusat kendali arus kas multi-mata uang untuk pendapatan dan pengeluaran operasional Anda.</p>
+        
+        {% if user.is_creator %}
+        <div class="mt-6 p-6 bg-gradient-to-r from-emerald-500/10 to-blue-500/10 border border-emerald-500/20 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4">
+            <div>
+                <h3 class="text-lg font-bold text-white mb-1">Auto-Convert ke IDR</h3>
+                <p class="text-sm text-gray-400">Tarik nilai tukar *real-time* dan konversi semua saldo asing Anda (USD, SGD, MYR, CNY) menjadi Rupiah. Terkena potongan spread 1.5%.</p>
+            </div>
+            <form method="POST" action="{% url 'core_ui:user_wallet_convert' %}">
+                {% csrf_token %}
+                <button type="submit" class="whitespace-nowrap px-8 py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition-all transform hover:-translate-y-1">
+                    Convert Semua ke IDR
+                </button>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if messages %}
+    <div class="mb-8 space-y-2">
+        {% for message in messages %}
+        <div class="p-4 rounded-xl {% if message.tags == 'success' %}bg-emerald-500/10 border-emerald-500/30 text-emerald-400{% else %}bg-red-500/10 border-red-500/30 text-red-400{% endif %} border">
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- 3 Wallet Cards -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+        
+        <!-- USD Wallet -->
+        <div class="glass p-6 rounded-3xl border border-blue-500/20 relative overflow-hidden group">
+            <div class="absolute -right-6 -top-6 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl group-hover:bg-blue-500/20 transition-all"></div>
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400 font-bold">🇺🇸</div>
+                <h3 class="text-lg font-bold text-white">Dolar AS (USD)</h3>
+            </div>
+            <div class="mb-6">
+                <p class="text-sm text-gray-400">Total Saldo</p>
+                <p class="text-3xl font-black text-white">$ {{ user.balance_usd|floatformat:2 }}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <a href="{% url 'core_ui:user_topup' %}" class="py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-white transition-colors text-center inline-block">Top-Up</a>
+                {% if user.is_creator %}
+                <button onclick="openModal('withdraw', 'USD')" class="py-2 bg-blue-500 hover:bg-blue-600 rounded-xl text-sm font-bold text-white shadow-lg shadow-blue-500/20 transition-all">Tarik</button>
+                {% else %}
+                <button disabled class="py-2 bg-blue-500/20 text-blue-300/50 rounded-xl text-sm font-bold cursor-not-allowed" title="Hanya Host yang bisa menarik">Tarik</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- SGD Wallet -->
+        <div class="glass p-6 rounded-3xl border border-red-500/20 relative overflow-hidden group">
+            <div class="absolute -right-6 -top-6 w-32 h-32 bg-red-500/10 rounded-full blur-2xl group-hover:bg-red-500/20 transition-all"></div>
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 font-bold">🇸🇬</div>
+                <h3 class="text-lg font-bold text-white">Dolar SGP (SGD)</h3>
+            </div>
+            <div class="mb-6">
+                <p class="text-sm text-gray-400">Total Saldo</p>
+                <p class="text-3xl font-black text-white">S$ {{ user.balance_sgd|floatformat:2 }}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <a href="{% url 'core_ui:user_topup' %}" class="py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-white transition-colors text-center inline-block">Top-Up</a>
+                {% if user.is_creator %}
+                <button onclick="openModal('withdraw', 'SGD')" class="py-2 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-bold text-white shadow-lg shadow-red-500/20 transition-all">Tarik</button>
+                {% else %}
+                <button disabled class="py-2 bg-red-500/20 text-red-300/50 rounded-xl text-sm font-bold cursor-not-allowed" title="Hanya Host yang bisa menarik">Tarik</button>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- IDR Wallet -->
+        <div class="glass p-6 rounded-3xl border border-emerald-500/20 relative overflow-hidden group">
+            <div class="absolute -right-6 -top-6 w-32 h-32 bg-emerald-500/10 rounded-full blur-2xl group-hover:bg-emerald-500/20 transition-all"></div>
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-full bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold">🇮🇩</div>
+                <h3 class="text-lg font-bold text-white">Rupiah (IDR)</h3>
+            </div>
+            <div class="mb-6">
+                <p class="text-sm text-gray-400">Total Saldo</p>
+                <p class="text-3xl font-black text-white">Rp {{ user.balance_idr|floatformat:2 }}</p>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <a href="{% url 'core_ui:user_topup' %}" class="py-2 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl text-sm font-bold text-white transition-colors text-center inline-block">Top-Up</a>
+                {% if user.is_creator %}
+                <button onclick="openModal('withdraw', 'IDR')" class="py-2 bg-emerald-500 hover:bg-emerald-600 rounded-xl text-sm font-bold text-white shadow-lg shadow-emerald-500/20 transition-all">Tarik</button>
+                {% else %}
+                <button disabled class="py-2 bg-emerald-500/20 text-emerald-300/50 rounded-xl text-sm font-bold cursor-not-allowed" title="Hanya Host yang bisa menarik">Tarik</button>
+                {% endif %}
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Riwayat Transaksi -->
+    <div class="glass rounded-3xl border border-white/5 overflow-hidden">
+        <div class="p-6 border-b border-white/5">
+            <h3 class="text-xl font-bold text-white">Riwayat Transaksi (Buku Besar)</h3>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-left">
+                <thead class="bg-white/5 text-gray-400 text-xs uppercase">
+                    <tr>
+                        <th class="px-6 py-4 font-medium">Waktu</th>
+                        <th class="px-6 py-4 font-medium">Tipe</th>
+                        <th class="px-6 py-4 font-medium">Mata Uang</th>
+                        <th class="px-6 py-4 font-medium">Nominal</th>
+                        <th class="px-6 py-4 font-medium">Status</th>
+                        <th class="px-6 py-4 font-medium">Catatan</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-white/5 text-sm">
+                    {% for t in transactions %}
+                    <tr class="hover:bg-white/5 transition-colors">
+                        <td class="px-6 py-4 text-gray-300">{{ t.created_at|date:"d M Y, H:i" }}</td>
+                        <td class="px-6 py-4">
+                            {% if t.transaction_type == 'deposit' or t.transaction_type == 'topup' %}
+                                <span class="px-2 py-1 rounded bg-blue-500/20 text-blue-400 font-bold text-xs">TOP-UP</span>
+                            {% elif t.transaction_type == 'withdrawal' %}
+                                <span class="px-2 py-1 rounded bg-red-500/20 text-red-400 font-bold text-xs">TARIK</span>
+                            {% else %}
+                                <span class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-bold text-xs">EARNING</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-white font-bold">{{ t.currency }}</td>
+                        <td class="px-6 py-4 {% if t.transaction_type == 'withdrawal' %}text-red-400{% else %}text-emerald-400{% endif %} font-mono">
+                            {% if t.transaction_type == 'withdrawal' %}-{% else %}+{% endif %}{{ t.amount|floatformat:2 }}
+                        </td>
+                        <td class="px-6 py-4">
+                            {% if t.status == 'completed' %}
+                                <span class="text-emerald-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-400"></span> Sukses</span>
+                            {% elif t.status == 'pending' %}
+                                <span class="text-yellow-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-yellow-400"></span> Pending</span>
+                            {% else %}
+                                <span class="text-red-400 flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-400"></span> Gagal</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-6 py-4 text-gray-400 max-w-xs truncate" title="{{ t.notes }}">{{ t.notes|default:"-" }}</td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="px-6 py-8 text-center text-gray-500">Belum ada riwayat transaksi di dompet ini.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Aksi -->
+<div id="actionModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+    <div class="glass w-full max-w-md rounded-3xl border border-white/10 p-8 transform scale-95 opacity-0 transition-all" id="modalContent">
+        <div class="flex justify-between items-center mb-6">
+            <h3 id="modalTitle" class="text-2xl font-bold text-white">Aksi Dompet</h3>
+            <button onclick="closeModal()" class="text-gray-400 hover:text-white">&times;</button>
+        </div>
+        
+        <form method="POST" action="{% url 'core_ui:user_wallet_action' %}">
+            {% csrf_token %}
+            <input type="hidden" name="action" id="formAction" value="">
+            <input type="hidden" name="currency" id="formCurrency" value="">
+            
+            <div class="mb-6">
+                <label class="block text-sm font-bold text-gray-400 mb-2">Jumlah (<span id="currencyLabel" class="text-indigo-400"></span>)</label>
+                <input type="number" step="0.01" min="1" name="amount" required class="w-full bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white text-lg font-mono focus:ring-2 focus:ring-indigo-500 focus:outline-none" placeholder="0.00">
+            </div>
+            
+            <div id="withdrawWarning" class="hidden mb-6 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-xl text-sm text-yellow-200">
+                ⚠️ Permintaan penarikan akan dipotong dari saldo Anda dan menunggu persetujuan Admin APK untuk ditransfer ke rekening / dompet kripto Anda.
+            </div>
+            
+            <button type="submit" id="submitBtn" class="w-full py-4 rounded-xl font-bold text-white transition-all shadow-lg"></button>
+        </form>
+    </div>
+</div>
+
+<script>
+    function openModal(action, currency) {
+        document.getElementById('actionModal').classList.remove('hidden');
+        document.getElementById('actionModal').classList.add('flex');
+        
+        setTimeout(() => {
+            document.getElementById('modalContent').classList.remove('scale-95', 'opacity-0');
+            document.getElementById('modalContent').classList.add('scale-100', 'opacity-100');
+        }, 10);
+        
+        document.getElementById('formAction').value = action;
+        document.getElementById('formCurrency').value = currency;
+        document.getElementById('currencyLabel').innerText = currency;
+        
+        const btn = document.getElementById('submitBtn');
+        const warning = document.getElementById('withdrawWarning');
+        
+        if (action === 'deposit') {
+            document.getElementById('modalTitle').innerText = `Deposit ${currency}`;
+            btn.innerText = `Konfirmasi Deposit ${currency}`;
+            btn.className = "w-full py-4 rounded-xl font-bold text-white transition-all shadow-lg bg-blue-500 hover:bg-blue-600 shadow-blue-500/20";
+            warning.classList.add('hidden');
+        } else {
+            document.getElementById('modalTitle').innerText = `Tarik Saldo ${currency}`;
+            btn.innerText = `Kirim Permintaan Tarik ${currency}`;
+            btn.className = "w-full py-4 rounded-xl font-bold text-white transition-all shadow-lg bg-red-500 hover:bg-red-600 shadow-red-500/20";
+            warning.classList.remove('hidden');
+        }
+    }
+    
+    function closeModal() {
+        document.getElementById('modalContent').classList.remove('scale-100', 'opacity-100');
+        document.getElementById('modalContent').classList.add('scale-95', 'opacity-0');
+        
+        setTimeout(() => {
+            document.getElementById('actionModal').classList.add('hidden');
+            document.getElementById('actionModal').classList.remove('flex');
+        }, 300);
+    }
+</script>
+{% endblock %}

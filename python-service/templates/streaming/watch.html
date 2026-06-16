@@ -1,0 +1,542 @@
+{% extends "booking/base.html" %}
+{% load static %}
+
+{% block title %}Watch Live — {{ stream.title }} — Kreativa{% endblock %}
+
+{% block content %}
+<div class="h-[calc(100vh-80px)] max-h-screen px-4 py-4 sm:px-6 animate-fade-in flex flex-col">
+    
+    <div class="flex-1 flex flex-col lg:flex-row gap-4 h-full overflow-hidden">
+        
+        <!-- ===== LEFT: VIDEO PLAYER ===== -->
+        <div class="flex-1 flex flex-col glass rounded-3xl overflow-hidden border border-white/5 relative shadow-2xl">
+            <!-- Player Header -->
+            <div class="absolute top-0 left-0 right-0 p-5 bg-gradient-to-b from-black/80 to-transparent z-20 flex justify-between items-start pointer-events-none">
+                <div>
+                    <span class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-red-500 text-white text-xs font-bold mb-2 shadow-lg shadow-red-500/30">
+                        <span class="w-2 h-2 rounded-full bg-white animate-pulse"></span> LIVE
+                    </span>
+                    <h1 class="text-xl font-bold text-white drop-shadow-lg">{{ stream.title }}</h1>
+                    <p class="text-sm text-gray-300 mt-1">@{{ stream.host.username }}</p>
+                </div>
+                <div class="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur text-sm text-white border border-white/10 pointer-events-auto">
+                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    <span id="viewer-count" class="font-bold">0</span>
+                </div>
+            </div>
+
+            <!-- Reactions Floating Container -->
+            <div id="reactions-container" class="absolute bottom-24 left-6 z-30 pointer-events-none w-16" style="height: 70%"></div>
+
+            <!-- Video Element -->
+            <div id="player-container" class="w-full h-full bg-black flex items-center justify-center relative">
+                {% if is_host %}
+                <!-- HOST: Webcam Preview -->
+                <video id="host-camera" autoplay muted playsinline class="w-full h-full object-cover"></video>
+                <div id="host-controls" class="absolute bottom-6 left-1/2 -translate-x-1/2 z-20 flex items-center gap-3">
+                    <button id="btn-toggle-cam" class="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur text-white border border-white/10 transition-all" title="Toggle Kamera">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/></svg>
+                    </button>
+                    <button id="btn-toggle-mic" class="p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur text-white border border-white/10 transition-all" title="Toggle Mikrofon">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 016 0v6a3 3 0 01-3 3z"/></svg>
+                    </button>
+                    <button id="btn-end-stream" class="px-5 py-3 rounded-full bg-red-600 hover:bg-red-500 text-white font-bold text-sm shadow-lg shadow-red-500/25 transition-all">
+                        Akhiri Siaran
+                    </button>
+                </div>
+                {% else %}
+                <!-- VIEWER: Stream Player (OvenPlayer) -->
+                <div id="player" class="w-full h-full bg-black"></div>
+                {% endif %}
+            </div>
+
+            <!-- Interaction Bar (Bottom Overlay) -->
+            <div class="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/90 via-black/50 to-transparent z-20 pointer-events-none flex justify-between items-end">
+                <div class="pointer-events-auto flex gap-2">
+                    <button class="reaction-btn p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur text-xl transition-transform hover:scale-125 active:scale-90" data-reaction="❤️">❤️</button>
+                    <button class="reaction-btn p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur text-xl transition-transform hover:scale-125 active:scale-90" data-reaction="🔥">🔥</button>
+                    <button class="reaction-btn p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur text-xl transition-transform hover:scale-125 active:scale-90" data-reaction="👏">👏</button>
+                    <button class="reaction-btn p-3 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur text-xl transition-transform hover:scale-125 active:scale-90" data-reaction="😂">😂</button>
+                </div>
+                <div class="pointer-events-auto">
+                    <button id="btn-gift" onclick="toggleStickerModal()" class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-white font-bold shadow-lg shadow-orange-500/25 transition-transform hover:-translate-y-1">
+                        <span>🎁</span> Kirim Stiker
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stiker Gift Overlay (saat dikirim) -->
+            <div id="sticker-gift-overlay" class="absolute inset-0 z-40 pointer-events-none flex items-center justify-center hidden">
+                <img id="sticker-gift-img" src="" class="w-48 h-48 object-contain animate-bounce drop-shadow-2xl" style="filter: drop-shadow(0 0 30px rgba(255,200,0,0.6));">
+            </div>
+        </div>
+
+    <!-- Stiker Modal (Floating Panel) -->
+    <div id="stickerModal" class="hidden fixed inset-0 z-50 flex items-end lg:items-center justify-center bg-black/60 backdrop-blur-sm p-4" onclick="if(event.target===this)toggleStickerModal()">
+        <div class="w-full max-w-2xl glass rounded-3xl border border-white/10 overflow-hidden transform transition-all animate-slide-up max-h-[80vh] flex flex-col">
+            <!-- Header -->
+            <div class="p-4 border-b border-white/10 flex justify-between items-center flex-shrink-0">
+                <h3 class="text-lg font-bold text-white">🎁 Pilih Stiker Gift</h3>
+                <button onclick="toggleStickerModal()" class="text-gray-400 hover:text-white text-2xl leading-none">&times;</button>
+            </div>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-white/5 flex-shrink-0 overflow-x-auto">
+                <button class="sticker-tab active px-4 py-3 text-sm font-bold text-white border-b-2 border-indigo-500 whitespace-nowrap" data-pack="kiss">💋 Kiss Me <span class="text-emerald-400 text-xs">$0.50 - $0.95</span></button>
+                <button class="sticker-tab px-4 py-3 text-sm font-bold text-gray-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-pack="emoji">😈 Emoji RMX <span class="text-emerald-400 text-xs">$1.00 - $2.49</span></button>
+                <button class="sticker-tab px-4 py-3 text-sm font-bold text-gray-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-pack="blondenun">👼 BlondeNun <span class="text-emerald-400 text-xs">$2.50 - $4.99</span></button>
+                <button class="sticker-tab px-4 py-3 text-sm font-bold text-gray-400 hover:text-white border-b-2 border-transparent whitespace-nowrap" data-pack="morgana">🧙‍♀️ Morgana <span class="text-emerald-400 text-xs">$5.00 - $9.99</span></button>
+            </div>
+
+            <!-- Stiker Grid -->
+            <div class="p-4 overflow-y-auto flex-1">
+                <!-- Kiss Me Pack ($0.50 - $0.95) -->
+                <div id="pack-kiss" class="sticker-pack-grid grid grid-cols-5 sm:grid-cols-6 gap-3">
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_1',0.50)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_1.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.50</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_2',0.55)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_2.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.55</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_3',0.60)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_3.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.60</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_4',0.65)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_4.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.65</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_5',0.70)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_5.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.70</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_6',0.75)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_6.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.75</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_7',0.80)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_7.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.80</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_8',0.85)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_8.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.85</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_9',0.90)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_9.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.90</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('kiss','sticker_10',0.95)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe/sticker_10.webp?2548e08ee4377661128da27638d4ab94&d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$0.95</span></button>
+                </div>
+                <!-- Emoji RMX Pack ($1.00 - $2.49) -->
+                <div id="pack-emoji" class="sticker-pack-grid grid grid-cols-5 sm:grid-cols-6 gap-3 hidden">
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_1',1.00)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_1.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$1.00</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_2',1.15)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_2.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$1.15</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_3',1.30)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_3.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$1.30</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_4',1.45)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_4.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$1.45</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_5',1.60)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_5.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$1.60</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_6',1.75)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_6.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$1.75</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_7',1.90)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_7.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$1.90</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_8',2.05)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_8.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$2.05</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_9',2.25)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_9.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$2.25</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('emoji','sticker_10',2.49)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1/sticker_10.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$2.49</span></button>
+                </div>
+                <!-- BlondeNun Pack ($2.50 - $4.99) -->
+                <div id="pack-blondenun" class="sticker-pack-grid grid grid-cols-5 sm:grid-cols-6 gap-3 hidden">
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_1',2.50)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_1.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$2.50</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_2',2.75)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_2.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$2.75</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_3',3.00)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_3.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$3.00</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_4',3.25)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_4.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$3.25</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_5',3.50)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_5.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$3.50</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_6',3.75)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_6.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$3.75</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_7',4.00)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_7.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$4.00</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_8',4.25)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_8.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$4.25</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_9',4.50)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_9.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$4.50</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('blondenun','sticker_10',4.99)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1/sticker_10.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$4.99</span></button>
+                </div>
+                <!-- Morgana Pack ($5.00 - $9.99) -->
+                <div id="pack-morgana" class="sticker-pack-grid grid grid-cols-5 sm:grid-cols-6 gap-3 hidden">
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_1',5.00)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_1.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$5.00</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_2',5.50)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_2.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$5.50</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_3',6.00)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_3.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$6.00</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_4',6.50)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_4.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$6.50</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_5',7.00)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_5.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$7.00</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_6',7.50)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_6.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$7.50</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_7',8.00)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_7.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$8.00</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_8',8.50)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_8.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$8.50</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_9',9.00)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_9.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$9.00</span></button>
+                    <button class="sticker-item relative group" onclick="sendSticker('morgana','sticker_10',9.99)"><img src="https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1/sticker_10.webp?d=200x200" class="w-full rounded-xl hover:scale-110 transition-transform cursor-pointer" loading="lazy"><span class="absolute -bottom-2 right-0 bg-black/80 text-emerald-400 text-[10px] px-1 rounded font-bold">$9.99</span></button>
+                </div>
+            </div>
+
+            <!-- Footer & Gift Button -->
+            <div class="p-4 border-t border-white/10 flex justify-between items-center bg-gray-900 rounded-b-3xl">
+                <p class="text-xs text-gray-500">Saldo dari stiker gift akan dikirimkan langsung ke Host.</p>
+                {% if not is_host %}
+                <button onclick="document.getElementById('gift-modal').classList.remove('hidden'); loadGifts();" class="px-6 py-2.5 bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600 text-white font-bold rounded-xl shadow-lg shadow-pink-500/25 flex items-center gap-2 transition-all">
+                    🎁 Sawer Host
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+        <!-- ===== RIGHT: LIVE CHAT ===== -->
+        <div class="w-full lg:w-96 flex flex-col glass rounded-3xl border border-white/5 h-full">
+            <div class="p-4 border-b border-gray-700/50 flex justify-between items-center bg-white/[0.02]">
+                <h3 class="font-bold text-white flex items-center gap-2">
+                    💬 Live Chat
+                </h3>
+                <span id="chat-status-dot" class="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" title="Menghubungkan..."></span>
+            </div>
+
+            <div id="stream-chat-messages" class="flex-1 overflow-y-auto p-4 space-y-3">
+                <div class="text-center">
+                    <span class="inline-block px-3 py-1 rounded-full bg-gray-800/50 text-xs text-gray-500">Selamat datang di live chat!</span>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-700/50 bg-white/[0.02]">
+                <form id="stream-chat-form" class="flex gap-2">
+                    <input type="text" id="stream-chat-input" class="flex-1 px-4 py-2.5 bg-gray-900 border border-gray-700 rounded-xl text-sm text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent placeholder-gray-500" placeholder="Ketik komentar..." autocomplete="off" maxlength="500">
+                    <button type="submit" id="stream-chat-btn" class="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors disabled:opacity-50">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+                    </button>
+                </form>
+                <p class="text-xs text-gray-600 mt-2">Chat diawasi oleh AI Auto-Moderator.</p>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Load OvenPlayer & OvenLiveKit -->
+<script src="https://cdn.jsdelivr.net/npm/ovenplayer/dist/ovenplayer.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ovenlivekit@1.5.0/dist/OvenLiveKit.min.js"></script>
+
+<script>
+// ─── CONFIG ──────────────────────────────────────────────
+const STREAM_ID = "{{ stream.id }}";
+const CURRENT_USER = "{{ request.user.username }}";
+const CURRENT_USER_ID = "{{ request.user.id }}";
+const IS_HOST = {{ is_host|yesno:"true,false" }};
+const WS_URL = `ws://localhost:8082/ws/stream/${STREAM_ID}/interact?username=${encodeURIComponent(CURRENT_USER)}`;
+
+let ws = null;
+
+const chatBox = document.getElementById("stream-chat-messages");
+const chatForm = document.getElementById("stream-chat-form");
+const chatInput = document.getElementById("stream-chat-input");
+const statusDot = document.getElementById("chat-status-dot");
+const viewerCountEl = document.getElementById("viewer-count");
+const reactionsContainer = document.getElementById("reactions-container");
+
+// ─── WebSocket Connection ─────────────────────────────────
+function connectWS() {
+    ws = new WebSocket(WS_URL);
+
+    ws.onopen = () => {
+        statusDot.classList.remove("bg-red-500");
+        statusDot.classList.add("bg-emerald-500");
+        statusDot.title = "Terhubung";
+        chatInput.disabled = false;
+        appendSystem("Terhubung ke live chat. Selamat menonton!");
+    };
+
+    ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        
+        switch(data.type) {
+            case "comment":
+                appendComment(data.payload);
+                break;
+            case "reaction":
+                spawnReaction(data.payload.reaction);
+                break;
+            case "viewer_joined":
+                viewerCountEl.textContent = data.payload.viewer_count || 0;
+                appendSystem(`${data.payload.username || 'Seseorang'} bergabung 👋`);
+                break;
+            case "viewer_left":
+                viewerCountEl.textContent = data.payload.viewer_count || 0;
+                break;
+            case "gift":
+                appendGift(data.payload);
+                // Jika ada stiker URL, tampilkan overlay animasi besar
+                if (data.payload.sticker_url) {
+                    showStickerOverlay(data.payload.sticker_url, data.payload.username, data.payload.amount);
+                }
+                break;
+            case "error":
+                appendError(data.payload.message);
+                break;
+        }
+    };
+
+    ws.onclose = () => {
+        statusDot.classList.remove("bg-emerald-500");
+        statusDot.classList.add("bg-red-500");
+        statusDot.title = "Terputus";
+        chatInput.disabled = true;
+        appendError("Koneksi terputus. Mencoba menghubungkan ulang...");
+        setTimeout(connectWS, 3000);
+    };
+
+    ws.onerror = () => {
+        appendError("Gagal terhubung ke server streaming.");
+    };
+}
+
+// ─── Chat Functions ──────────────────────────────────────
+function appendComment(payload) {
+    const isMe = String(payload.user_id) === String(CURRENT_USER_ID);
+    const div = document.createElement("div");
+    div.className = `flex gap-2 items-start animate-fade-in ${isMe ? 'flex-row-reverse' : ''}`;
+    div.innerHTML = `
+        <div class="w-7 h-7 rounded-full ${isMe ? 'bg-indigo-500/30 text-indigo-400' : 'bg-white/10 text-gray-400'} flex items-center justify-center text-xs font-bold flex-shrink-0">
+            ${(payload.username || "?").charAt(0).toUpperCase()}
+        </div>
+        <div class="max-w-[80%]">
+            <span class="text-xs ${isMe ? 'text-indigo-400' : 'text-gray-500'} font-bold">${payload.username || 'Anon'}</span>
+            <p class="text-sm text-gray-200 mt-0.5">${escapeHtml(payload.content)}</p>
+        </div>
+    `;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function appendGift(payload) {
+    const div = document.createElement("div");
+    div.className = "text-center animate-fade-in";
+    const stickerThumb = payload.sticker_url 
+        ? `<img src="${payload.sticker_url}" class="w-12 h-12 inline-block rounded-lg mx-1">`
+        : '';
+    div.innerHTML = `
+        <div class="inline-block px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30">
+            <span class="text-amber-400 font-bold text-sm">
+                🎁 ${payload.username || tr('Seseorang')} ${tr('mengirim gift!')} 
+                <span class="text-emerald-400">${formatPrice(Number(payload.amount || 0))}</span>
+            </span>
+            ${stickerThumb}
+        </div>
+    `;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function appendSystem(text) {
+    const div = document.createElement("div");
+    div.className = "text-center animate-fade-in";
+    div.innerHTML = `<span class="inline-block px-3 py-1 rounded-full bg-gray-800/50 text-xs text-gray-500">${text}</span>`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function appendError(text) {
+    const div = document.createElement("div");
+    div.className = "text-center animate-fade-in";
+    div.innerHTML = `<span class="inline-block px-3 py-1 rounded-full bg-red-500/10 border border-red-500/30 text-xs text-red-400 font-bold">⚠️ ${text}</span>`;
+    chatBox.appendChild(div);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const d = document.createElement('div');
+    d.textContent = text;
+    return d.innerHTML;
+}
+
+// ─── Send Comment ────────────────────────────────────────
+chatForm.addEventListener("submit", (e) => {
+    e.preventDefault();
+    if (!ws || ws.readyState !== WebSocket.OPEN) return;
+    const text = chatInput.value.trim();
+    if (!text) return;
+    
+    ws.send(JSON.stringify({
+        type: "comment",
+        room_id: STREAM_ID,
+        payload: { content: text }
+    }));
+    chatInput.value = "";
+});
+
+// ─── Reactions ───────────────────────────────────────────
+document.querySelectorAll(".reaction-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const reaction = btn.dataset.reaction;
+        if (!ws || ws.readyState !== WebSocket.OPEN) return;
+        
+        ws.send(JSON.stringify({
+            type: "reaction",
+            room_id: STREAM_ID,
+            payload: { reaction: reaction }
+        }));
+    });
+});
+
+function spawnReaction(emoji) {
+    const el = document.createElement("div");
+    el.textContent = emoji;
+    el.className = "absolute text-3xl pointer-events-none";
+    el.style.bottom = "0";
+    el.style.left = Math.random() * 40 + "px";
+    el.style.opacity = "1";
+    el.style.transition = "none";
+    reactionsContainer.appendChild(el);
+
+    // Force reflow
+    el.offsetHeight;
+
+    // Animate upward and fade
+    const duration = 2000 + Math.random() * 1500;
+    el.style.transition = `transform ${duration}ms ease-out, opacity ${duration}ms ease-out`;
+    el.style.transform = `translateY(-${300 + Math.random() * 200}px) scale(${0.6 + Math.random() * 0.8}) rotate(${-15 + Math.random() * 30}deg)`;
+    el.style.opacity = "0";
+
+    setTimeout(() => el.remove(), duration);
+}
+
+// ─── WebRTC Streaming (OME) ────────────────────────────────
+const OME_WS_URL = `ws://localhost:3333/app/${STREAM_ID}`;
+
+{% if is_host %}
+// ─── HOST: OvenLiveKit ──────────────────────────────────
+(async function initLiveKit() {
+    try {
+        const liveKit = OvenLiveKit.create();
+        
+        await liveKit.attachMedia(document.getElementById("host-camera"));
+        
+        let camEnabled = true;
+        let micEnabled = true;
+
+        document.getElementById("btn-toggle-cam").addEventListener("click", () => {
+            camEnabled = !camEnabled;
+            // OvenLiveKit API to toggle video
+            // Currently relies on the local stream track state
+            const stream = document.getElementById("host-camera").srcObject;
+            if (stream) {
+                stream.getVideoTracks().forEach(t => t.enabled = camEnabled);
+            }
+            document.getElementById("btn-toggle-cam").classList.toggle("bg-red-500/50", !camEnabled);
+        });
+
+        document.getElementById("btn-toggle-mic").addEventListener("click", () => {
+            micEnabled = !micEnabled;
+            const stream = document.getElementById("host-camera").srcObject;
+            if (stream) {
+                stream.getAudioTracks().forEach(t => t.enabled = micEnabled);
+            }
+            document.getElementById("btn-toggle-mic").classList.toggle("bg-red-500/50", !micEnabled);
+        });
+
+        document.getElementById("btn-end-stream").addEventListener("click", () => {
+            if (confirm("Anda yakin ingin mengakhiri siaran?")) {
+                liveKit.stopRecord();
+                liveKit.remove();
+                
+                // Panggil Go stream-service untuk stop stream
+                fetch(`/api/v1/streams/${STREAM_ID}/stop`, {
+                    method: 'PUT',
+                    headers: {'Authorization': `Bearer ${CURRENT_USER}`} // Sesuaikan dengan auth Go
+                }).catch(e => console.error("Error stopping stream:", e));
+                
+                window.location.href = "{% url 'streaming_ui:list' %}";
+            }
+        });
+        
+        // Start publishing to OME
+        liveKit.startRecord(OME_WS_URL);
+        
+    } catch (err) {
+        console.error("Gagal mengakses kamera:", err);
+        appendError("Gagal mengakses kamera/mikrofon. Pastikan izin browser sudah diberikan.");
+    }
+})();
+{% else %}
+// ─── VIEWER: OvenPlayer ─────────────────────────────────
+(function initPlayer() {
+    const player = OvenPlayer.create('player', {
+        sources: [
+            {
+                label: 'WebRTC',
+                type: 'webrtc',
+                file: OME_WS_URL
+            }
+        ],
+        autoStart: true,
+        mute: true // Autoplay policy
+    });
+    
+    player.on('error', function(error) {
+        console.error("Player Error:", error);
+        appendError("Gagal memutar video. Stream mungkin belum mulai atau sudah berakhir.");
+    });
+})();
+{% endif %}
+
+// ─── Stiker Modal & Tab Logic ────────────────────────────
+const PACK_URLS = {
+    kiss: "https://s3.getstickerpack.com/storage/uploads/sticker-pack/kiss-me-3deluxe",
+    emoji: "https://s3.getstickerpack.com/storage/uploads/sticker-pack/mk-rmx-emoji-sex-part-1-1",
+    blondenun: "https://s3.getstickerpack.com/storage/uploads/sticker-pack/blondenun-part-1",
+    morgana: "https://s3.getstickerpack.com/storage/uploads/sticker-pack/morgana-the-witch-1"
+};
+
+function toggleStickerModal() {
+    const modal = document.getElementById('stickerModal');
+    modal.classList.toggle('hidden');
+}
+
+// Tab switching
+document.querySelectorAll('.sticker-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        // Reset tabs
+        document.querySelectorAll('.sticker-tab').forEach(t => {
+            t.classList.remove('active','text-white','border-indigo-500');
+            t.classList.add('text-gray-400','border-transparent');
+        });
+        tab.classList.add('active','text-white','border-indigo-500');
+        tab.classList.remove('text-gray-400','border-transparent');
+        
+        // Show/hide packs
+        document.querySelectorAll('.sticker-pack-grid').forEach(g => g.classList.add('hidden'));
+        document.getElementById('pack-' + tab.dataset.pack).classList.remove('hidden');
+    });
+});
+
+function sendSticker(pack, stickerName, price) {
+    if (!ws || ws.readyState !== WebSocket.OPEN) {
+        appendError("Tidak terhubung ke server.");
+        return;
+    }
+    
+    const stickerUrl = PACK_URLS[pack] + "/" + stickerName + ".webp?d=200x200";
+    
+    ws.send(JSON.stringify({
+        type: "gift",
+        room_id: STREAM_ID,
+        payload: {
+            gift_type: "sticker",
+            sticker_pack: pack,
+            sticker_name: stickerName,
+            sticker_url: stickerUrl,
+            amount: price,
+            animation: "overlay"
+        }
+    }));
+    
+    toggleStickerModal();
+}
+
+function showStickerOverlay(stickerUrl, username, amount) {
+    const overlay = document.getElementById('sticker-gift-overlay');
+    const img = document.getElementById('sticker-gift-img');
+    img.src = stickerUrl;
+    overlay.classList.remove('hidden');
+    
+    // Animasi: muncul besar lalu menghilang
+    img.style.transform = 'scale(0)';
+    img.style.transition = 'transform 0.4s cubic-bezier(0.68, -0.55, 0.27, 1.55), opacity 0.3s ease';
+    img.style.opacity = '1';
+    
+    requestAnimationFrame(() => {
+        img.style.transform = 'scale(1)';
+    });
+    
+    setTimeout(() => {
+        img.style.opacity = '0';
+        img.style.transform = 'scale(1.5)';
+        setTimeout(() => {
+            overlay.classList.add('hidden');
+            img.style.transform = 'scale(0)';
+            img.style.opacity = '1';
+        }, 400);
+    }, 3000);
+}
+
+// ─── Init & DOMContentLoaded ─────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+    connectWS();
+});
+</script>
+{% endblock %}

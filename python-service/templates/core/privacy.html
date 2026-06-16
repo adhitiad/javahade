@@ -1,0 +1,19 @@
+{% extends "booking/base.html" %}
+
+{% block title %}Kebijakan Privasi — Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto px-4 py-16 animate-fade-in">
+    <div class="glass p-10 rounded-3xl border border-white/10 shadow-2xl relative overflow-hidden">
+        <h1 class="text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500 mb-6">Kebijakan Privasi</h1>
+        <div class="space-y-4 text-gray-300">
+            <p>Privasi Anda adalah prioritas mutlak kami. Di Kreativa, kami berkomitmen untuk melindungi data pribadi dan sesi privat Anda.</p>
+            <ul class="list-disc pl-5 space-y-2">
+                <li><strong>Data Enkripsi:</strong> Semua lalu lintas web dan pesan instan Anda dienkripsi secara penuh (*end-to-end*).</li>
+                <li><strong>Sesi Privat:</strong> Tidak ada sesi *Live Booking* yang direkam oleh server kami tanpa izin eksplisit dari Host dan Klien.</li>
+                <li><strong>Data Biometrik (KYC):</strong> Foto KTP dan *selfie* Anda diproses oleh sistem AI (Groq Vision) untuk keperluan keamanan transaksi dan menghindari bot. Kami tidak memperjualbelikan data wajah Anda kepada pihak ketiga mana pun.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
