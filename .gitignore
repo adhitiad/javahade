@@ -20,6 +20,8 @@ python-service/**/__pycache__/
 python-service/*.sqlite3
 python-service/.env
 
+**.png
+
 # ===========================
 # Go
 # ===========================
