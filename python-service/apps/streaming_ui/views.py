@@ -35,38 +35,41 @@ def stream_detail(request, slot_id):
         has_ticket = StreamTicket.objects.filter(stream=stream, user=request.user).exists()
         
     if request.method == "POST" and not has_ticket:
-        # Proses pembelian tiket
-        user = request.user
-        price = stream.ticket_price_usd
-        if user.balance_usd >= price:
-            user.balance_usd -= price
-            user.save()
-            
-            # Beri pendapatan ke Host (revenue sharing sederhana)
-            host = stream.host
-            host.balance_usd += price
-            host.save()
-            
-            # Catat tiket
-            StreamTicket.objects.create(stream=stream, user=user, price_paid=price)
-            
-            # Catat Ledger Wallet
-            from apps.payments.models import WalletTransaction
-            WalletTransaction.objects.create(
-                user=user, transaction_type=WalletTransaction.TransactionType.TICKET_PURCHASE,
-                amount=price, currency="USD", status=WalletTransaction.Status.COMPLETED,
-                notes=f"Tiket Stream: {stream.title}"
-            )
-            WalletTransaction.objects.create(
-                user=host, transaction_type=WalletTransaction.TransactionType.EARNING,
-                amount=price, currency="USD", status=WalletTransaction.Status.COMPLETED,
-                notes=f"Penjualan Tiket: {stream.title} ke @{user.username}"
-            )
-            
-            messages.success(request, "Tiket berhasil dibeli! Anda sekarang memiliki akses.")
-            has_ticket = True
-        else:
-            messages.error(request, "Saldo USD Anda tidak mencukupi untuk membeli tiket ini.")
+        from django.db import transaction
+        
+        with transaction.atomic():
+            # Proses pembelian tiket (Gunakan select_for_update untuk mencegah Race Condition)
+            user = request.user.__class__.objects.select_for_update().get(id=request.user.id)
+            price = stream.ticket_price_usd
+            if user.balance_usd >= price:
+                user.balance_usd -= price
+                user.save()
+                
+                # Beri pendapatan ke Host (revenue sharing sederhana)
+                host = stream.host.__class__.objects.select_for_update().get(id=stream.host.id)
+                host.balance_usd += price
+                host.save()
+                
+                # Catat tiket
+                StreamTicket.objects.create(stream=stream, user=user, price_paid=price)
+                
+                # Catat Ledger Wallet
+                from apps.payments.models import WalletTransaction
+                WalletTransaction.objects.create(
+                    user=user, transaction_type=WalletTransaction.TransactionType.TICKET_PURCHASE,
+                    amount=price, currency="USD", status=WalletTransaction.Status.COMPLETED,
+                    notes=f"Tiket Stream: {stream.title}"
+                )
+                WalletTransaction.objects.create(
+                    user=host, transaction_type=WalletTransaction.TransactionType.EARNING,
+                    amount=price, currency="USD", status=WalletTransaction.Status.COMPLETED,
+                    notes=f"Penjualan Tiket: {stream.title} ke @{user.username}"
+                )
+                
+                messages.success(request, "Tiket berhasil dibeli! Anda sekarang memiliki akses.")
+                has_ticket = True
+            else:
+                messages.error(request, "Saldo USD Anda tidak mencukupi untuk membeli tiket ini.")
             
     context = {
         "stream": stream,
@@ -89,9 +92,25 @@ def stream_watch(request, stream_id):
     if not has_access:
         messages.error(request, "Anda harus memiliki tiket untuk menonton stream ini.")
         return redirect("streaming:stream_detail", slot_id=stream.id)
-        
+
+    # Generate Signed Token for OvenMediaEngine (HMAC-SHA256)
+    # Ini mensimulasikan Admission Webhook OME SignedPolicy
+    import hmac
+    import hashlib
+    import base64
+    from django.conf import settings
+    
+    secret_key = getattr(settings, 'OME_WEBHOOK_SECRET', 'kreativa-super-secret-ome-key')
+    payload = f"{stream.id}:{request.user.id}:{int(timezone.now().timestamp()) + 3600}" # Berlaku 1 jam
+    signature = hmac.new(secret_key.encode(), payload.encode(), hashlib.sha256).digest()
+    token = base64.urlsafe_b64encode(signature).decode().rstrip('=')
+    
+    signed_token = f"{payload}.{token}"
+
     context = {
         "stream": stream,
-        "is_host": stream.host == request.user
+        "is_host": stream.host == request.user,
+        "signed_token": signed_token,
+        "viewer_ip": request.META.get('HTTP_CF_CONNECTING_IP', request.META.get('REMOTE_ADDR', '127.0.0.1'))
     }
     return render(request, "streaming/watch.html", context)

@@ -50,6 +50,10 @@ func main() {
 	bookingSvc := service.NewBookingService(pgPool, redisClient)
 	seatLockSvc := service.NewSeatLockService(redisClient)
 
+	// Mulai Saga Worker untuk mendengarkan hasil pembayaran dari Python
+	sagaWorker := service.NewSagaWorker(pgPool, redisClient)
+	go sagaWorker.Run(ctx)
+
 	// Initialize WebSocket hub
 	hub := ws.NewHub()
 	go hub.Run()
@@ -78,10 +82,10 @@ func main() {
 	r.Route("/api/v1/bookings", func(r chi.Router) {
 		r.Use(middleware.JWTAuth(cfg.JWTSecretKey))
 
-		r.Post("/slots", bookingHandler.CreateSlot)
+		r.With(middleware.RequireRole("host")).Post("/slots", bookingHandler.CreateSlot)
 		r.Get("/slots", bookingHandler.ListSlots)
 		r.Post("/reserve", bookingHandler.ReserveSlot)
-		r.Put("/{id}/confirm", bookingHandler.ConfirmBooking)
+		r.With(middleware.RequireRole("host")).Put("/{id}/confirm", bookingHandler.ConfirmBooking)
 		r.Delete("/{id}/cancel", bookingHandler.CancelBooking)
 		r.Get("/my", bookingHandler.MyBookings)
 	})

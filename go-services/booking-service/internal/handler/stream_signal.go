@@ -24,6 +24,7 @@ func NewStreamSignalHandler(hub *ws.Hub) *StreamSignalHandler {
 func (h *StreamSignalHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	streamID := chi.URLParam(r, "streamID")
 	userID := sharedMW.GetUserID(r.Context())
+	userRole, _ := r.Context().Value(sharedMW.RoleKey).(string)
 
 	conn, err := wsUpgrader.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -38,7 +39,13 @@ func (h *StreamSignalHandler) HandleWebSocket(w http.ResponseWriter, r *http.Req
 	go client.ReadPump(func(msg ws.Message) {
 		// Broadcast stream signals to all viewers
 		switch msg.Type {
-		case "stream_start", "stream_stop", "stream_metadata_update", "webrtc_offer", "webrtc_answer", "webrtc_ice_candidate":
+		case "stream_start", "stream_stop", "stream_metadata_update", "webrtc_offer":
+			if userRole != "host" && userRole != "admin" {
+				log.Warn().Str("user_id", userID).Str("role", userRole).Msg("Privilege Escalation attempt: non-host tried to send host-only signal")
+				return // Block the message
+			}
+			fallthrough // Proceed to broadcast
+		case "webrtc_answer", "webrtc_ice_candidate":
 			msg.RoomID = streamID
 			data, _ := json.Marshal(msg)
 			h.hub.Broadcast <- ws.BroadcastMessage{RoomID: streamID, Data: data}

@@ -12,6 +12,7 @@ import (
 	"github.com/rs/zerolog/log"
 
 	"github.com/kreativa/booking-service/internal/model"
+	sharedDB "github.com/kreativa/shared/database"
 )
 
 // BookingService handles booking operations.
@@ -27,21 +28,37 @@ func NewBookingService(db *pgxpool.Pool, redis *redis.Client) *BookingService {
 
 // CreateSlot creates a new booking slot.
 func (s *BookingService) CreateSlot(ctx context.Context, creatorID uuid.UUID, req model.CreateSlotRequest) (*model.BookingSlot, error) {
+	// Overlap Detection: Pastikan tidak ada slot yang bertabrakan waktunya
+	var overlapCount int
+	err := s.db.QueryRow(ctx,
+		`SELECT COUNT(*) FROM booking_slots 
+		 WHERE creator_id = $1 AND status != 'cancelled' 
+		 AND (start_time < $2 AND end_time > $3)`,
+		creatorID, req.EndTime, req.StartTime,
+	).Scan(&overlapCount)
+
+	if err != nil {
+		return nil, fmt.Errorf("gagal memvalidasi jadwal overlap: %w", err)
+	}
+	if overlapCount > 0 {
+		return nil, fmt.Errorf("jadwal bertabrakan dengan siaran Anda yang lain")
+	}
+
 	slot := &model.BookingSlot{
 		ID:          uuid.New(),
 		CreatorID:   creatorID,
 		Title:       req.Title,
 		Description: req.Description,
-		StartTime:   req.StartTime,
-		EndTime:     req.EndTime,
+		StartTime:   req.StartTime.UTC(), // Paksa UTC
+		EndTime:     req.EndTime.UTC(),
 		MaxSeats:    req.MaxSeats,
 		Price:       req.Price,
 		Currency:    req.Currency,
 		Status:      "available",
-		CreatedAt:   time.Now(),
+		CreatedAt:   time.Now().UTC(),
 	}
 
-	_, err := s.db.Exec(ctx,
+	_, err = s.db.Exec(ctx,
 		`INSERT INTO booking_slots (id, creator_id, title, description, start_time, end_time, max_seats, price, currency, status, created_at)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
 		slot.ID, slot.CreatorID, slot.Title, slot.Description,
@@ -117,11 +134,26 @@ func (s *BookingService) ListSlots(ctx context.Context, creatorID string) ([]mod
 
 // ReserveSlot reserves a seat in a booking slot.
 func (s *BookingService) ReserveSlot(ctx context.Context, userID, slotID uuid.UUID) (*model.Booking, error) {
+	// Mulai Transaksi untuk Advisory Lock
+	tx, err := s.db.Begin(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to start transaction: %w", err)
+	}
+	defer tx.Rollback(ctx)
+
+	// Gunakan Advisory Lock berdasarkan SlotID (hash ke int64)
+	// Ini menjamin proses pengecekan sisa kursi hingga Insert bersifat antrean (Atomic)
+	lockID := int64(slotID.ID()) // hash uuid to uint32
+	_, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock($1)`, lockID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to acquire advisory lock: %w", err)
+	}
+
 	// Get next available seat number
 	var currentBookings int
 	var maxSeats int
 
-	err := s.db.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`SELECT max_seats FROM booking_slots WHERE id = $1 AND status = 'available'`,
 		slotID,
 	).Scan(&maxSeats)
@@ -129,7 +161,7 @@ func (s *BookingService) ReserveSlot(ctx context.Context, userID, slotID uuid.UU
 		return nil, fmt.Errorf("slot not found or unavailable")
 	}
 
-	err = s.db.QueryRow(ctx,
+	err = tx.QueryRow(ctx,
 		`SELECT COUNT(*) FROM bookings WHERE slot_id = $1 AND status != 'cancelled'`,
 		slotID,
 	).Scan(&currentBookings)
@@ -147,10 +179,10 @@ func (s *BookingService) ReserveSlot(ctx context.Context, userID, slotID uuid.UU
 		UserID:    userID,
 		SeatNum:   currentBookings + 1,
 		Status:    "pending",
-		CreatedAt: time.Now(),
+		CreatedAt: time.Now().UTC(),
 	}
 
-	_, err = s.db.Exec(ctx,
+	_, err = tx.Exec(ctx,
 		`INSERT INTO bookings (id, slot_id, user_id, seat_num, status, created_at)
 		 VALUES ($1, $2, $3, $4, $5, $6)`,
 		booking.ID, booking.SlotID, booking.UserID,
@@ -159,6 +191,33 @@ func (s *BookingService) ReserveSlot(ctx context.Context, userID, slotID uuid.UU
 	if err != nil {
 		return nil, fmt.Errorf("failed to create booking: %w", err)
 	}
+
+	// Commit Transaksi untuk melepaskan Advisory Lock
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// SAGA PATTERN: Publish Event ke Redis Stream agar diproses oleh Python
+	// Python akan memotong saldo. Jika sukses, Python akan membalas payment.success
+	var slotPrice float64
+	var slotCurrency string
+	s.db.QueryRow(ctx, `SELECT price, currency FROM booking_slots WHERE id = $1`, slotID).Scan(&slotPrice, &slotCurrency)
+
+	payload := map[string]interface{}{
+		"booking_id": booking.ID.String(),
+		"user_id":    booking.UserID.String(),
+		"amount":     slotPrice,
+		"currency":   slotCurrency,
+	}
+	_, err = sharedDB.PublishEvent(ctx, s.redis, "saga:booking_events", payload)
+	if err != nil {
+		log.Error().Err(err).Msg("Saga Pattern: Gagal mempublikasikan event booking.created")
+		// Jika redis gagal, kita bisa membatalkan booking (Kompensasi sinkron darurat)
+		s.db.Exec(ctx, `UPDATE bookings SET status = 'cancelled' WHERE id = $1`, booking.ID)
+		return nil, fmt.Errorf("gagal menghubungkan ke sistem pembayaran")
+	}
+
+	log.Info().Str("booking_id", booking.ID.String()).Msg("Event booking.created berhasil dilempar ke Saga Orchestrator")
 
 	return booking, nil
 }
@@ -180,6 +239,23 @@ func (s *BookingService) ConfirmBooking(ctx context.Context, bookingID, userID u
 
 // CancelBooking cancels a booking.
 func (s *BookingService) CancelBooking(ctx context.Context, bookingID, userID uuid.UUID) error {
+	// Pengecekan Cancellation Policy (24 Jam sebelum mulai)
+	var startTime time.Time
+	err := s.db.QueryRow(ctx, 
+		`SELECT bs.start_time FROM bookings b 
+		 JOIN booking_slots bs ON b.slot_id = bs.id 
+		 WHERE b.id = $1 AND b.user_id = $2`, 
+		bookingID, userID,
+	).Scan(&startTime)
+	if err != nil {
+		return fmt.Errorf("booking not found: %w", err)
+	}
+
+	timeUntilStart := time.Until(startTime)
+	if timeUntilStart < 24*time.Hour {
+		return fmt.Errorf("pembatalan ditolak: batas waktu pembatalan adalah 24 jam sebelum acara dimulai")
+	}
+
 	result, err := s.db.Exec(ctx,
 		`UPDATE bookings SET status = 'cancelled' WHERE id = $1 AND user_id = $2 AND status IN ('pending', 'confirmed')`,
 		bookingID, userID,
@@ -190,6 +266,9 @@ func (s *BookingService) CancelBooking(ctx context.Context, bookingID, userID uu
 	if result.RowsAffected() == 0 {
 		return fmt.Errorf("booking not found or already cancelled")
 	}
+
+	// Trigger Saga Refund jika status sebelumnya Confirmed
+	// Implementasi refund akan menggunakan event stream baru: 'booking.refunded'
 	return nil
 }
 

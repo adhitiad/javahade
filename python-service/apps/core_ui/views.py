@@ -2,6 +2,8 @@ from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.http import require_POST
 from django.contrib import messages
+from django.contrib.postgres.search import SearchVector
+from django_ratelimit.decorators import ratelimit
 from apps.accounts.models import CreatorProfile, User
 from apps.subscriptions.models import Subscription, SubscriptionTier
 from apps.family.models import FamilyGroup, FamilyMember
@@ -368,7 +370,7 @@ def family_detail_view(request, family_id):
     
     # Check membership
     membership = FamilyMember.objects.filter(family=family, user=request.user).first()
-    if not membership and not request.user.is_admin_user:
+    if not membership and request.user.role not in [request.user.Role.ADMIN, request.user.Role.SUPERADMIN]:
         messages.error(request, "Anda bukan anggota Family ini.")
         return redirect("core_ui:family_portal")
         
@@ -916,12 +918,11 @@ def admin_report_action_view(request, report_id):
         
     return redirect("core_ui:admin_dashboard")
 
-@login_required
+@ratelimit(key='ip', rate='10/m', block=True)
 def global_search_view(request):
     """
     Menampilkan hasil pencarian global untuk Host dan Live Stream.
     """
-    from django.db.models import Q
     from apps.streaming_ui.models import LiveStream
     from apps.accounts.models import User
     
@@ -930,18 +931,21 @@ def global_search_view(request):
     hosts = []
     streams = []
     
-    if query:
-        # Search Hosts: users with role HOST where username or display_name matches
-        hosts = User.objects.filter(
-            Q(role=User.Role.HOST) & 
-            (Q(username__icontains=query) | Q(creator_profile__display_name__icontains=query))
-        ).distinct()
+    if query and len(query) >= 3:
+        # Batasi hasil hingga maksimal 20 (Anti DoS/Full Table Scan)
+        hosts = User.objects.annotate(
+            search=SearchVector('username', 'creator_profile__display_name')
+        ).filter(
+            role=User.Role.HOST,
+            search=query
+        ).distinct()[:20]
         
-        # Search Live Streams: upcoming or live streams where title or description matches
-        streams = LiveStream.objects.filter(
-            Q(status__in=[LiveStream.Status.UPCOMING, LiveStream.Status.LIVE]) &
-            (Q(title__icontains=query) | Q(description__icontains=query))
-        ).order_by('scheduled_time')
+        streams = LiveStream.objects.annotate(
+            search=SearchVector('title', 'description')
+        ).filter(
+            status__in=[LiveStream.Status.UPCOMING, LiveStream.Status.LIVE],
+            search=query
+        ).order_by('scheduled_time')[:20]
         
     return render(request, "core/search_results.html", {
         "query": query,

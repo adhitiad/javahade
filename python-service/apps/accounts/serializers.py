@@ -4,10 +4,23 @@ Accounts serializers — registration, login, user profiles.
 
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 
 from .models import CreatorProfile, KYCDocument
 
 User = get_user_model()
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+
+        # Add custom claims
+        token['role'] = user.role
+        token['username'] = user.username
+
+        return token
 
 
 class RegisterSerializer(serializers.ModelSerializer):
@@ -15,6 +28,7 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     password = serializers.CharField(write_only=True, min_length=8)
     password_confirm = serializers.CharField(write_only=True)
+    date_of_birth = serializers.DateField(required=True)
 
     class Meta:
         model = User
@@ -25,10 +39,23 @@ class RegisterSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
     def validate(self, attrs):
+        from datetime import date
+        
         if attrs["password"] != attrs.pop("password_confirm"):
             raise serializers.ValidationError(
                 {"password_confirm": "Passwords do not match."}
             )
+            
+        # Age Verification (18+)
+        dob = attrs.get("date_of_birth")
+        if dob:
+            today = date.today()
+            age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
+            if age < 18:
+                raise serializers.ValidationError(
+                    {"date_of_birth": "Anda harus berusia minimal 18 tahun untuk mendaftar."}
+                )
+                
         return attrs
 
     def create(self, validated_data):

@@ -13,6 +13,7 @@ type contextKey string
 
 const UserIDKey contextKey = "user_id"
 const UsernameKey contextKey = "username"
+const RoleKey contextKey = "role"
 
 // JWTAuth validates JWT tokens from the Authorization header.
 // Shares the same secret key as Django SimpleJWT.
@@ -65,8 +66,27 @@ func JWTAuth(secretKey string) func(http.Handler) http.Handler {
 				return
 			}
 
+			// Extract Role
+			role, _ := claims["role"].(string)
+
 			ctx := context.WithValue(r.Context(), UserIDKey, userID)
+			ctx = context.WithValue(ctx, RoleKey, role)
 			next.ServeHTTP(w, r.WithContext(ctx))
+		})
+	}
+}
+
+// RequireRole checks if the user has the required role.
+// Must be used after JWTAuth.
+func RequireRole(requiredRole string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			role, ok := r.Context().Value(RoleKey).(string)
+			if !ok || role != requiredRole {
+				http.Error(w, `{"detail":"Forbidden: Insufficient role"}`, http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }

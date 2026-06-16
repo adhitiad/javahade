@@ -61,6 +61,7 @@ INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
 # =============================================================================
 
 MIDDLEWARE = [
+    "common.logging.CorrelationIDMiddleware",
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
@@ -71,6 +72,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "apps.accounts.middleware.RoleRedirectMiddleware",
     "apps.moderation.middleware.AuditLogMiddleware",
+    "common.middleware.GeoBlockingMiddleware",
+    "common.middleware.RateLimitMiddleware",
 ]
 
 ROOT_URLCONF = "config.urls"
@@ -222,6 +225,7 @@ SIMPLE_JWT = {
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
     "TOKEN_TYPE_CLAIM": "token_type",
+    "TOKEN_OBTAIN_SERIALIZER": "apps.accounts.serializers.CustomTokenObtainPairSerializer",
 }
 
 # =============================================================================
@@ -245,6 +249,14 @@ CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_TIMEZONE = TIME_ZONE
+
+# =============================================================================
+# Security & Cookies (Phase 2)
+# =============================================================================
+SESSION_COOKIE_SECURE = not DEBUG # True di production
+CSRF_COOKIE_SECURE = not DEBUG    # True di production
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Strict'
 
 # =============================================================================
 # Email

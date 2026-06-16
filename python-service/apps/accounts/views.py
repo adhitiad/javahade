@@ -70,6 +70,41 @@ class UserDetailView(generics.RetrieveAPIView):
     queryset = User.objects.all()
     lookup_field = "id"
 
+class UserDeleteView(APIView):
+    """DELETE /api/v1/users/me/ — GDPR Right to Erasure (Data Scrubbing)."""
+    
+    permission_classes = [permissions.IsAuthenticated]
+    
+    def delete(self, request):
+        user = request.user
+        
+        # Data Scrubbing (Anonimisasi) untuk menjaga integritas transaksi/Saga
+        scrubbed_id = f"deleted_{user.id}"
+        user.username = scrubbed_id[:150] # Batasi panjang username
+        user.email = f"{scrubbed_id}@kreativa.app"
+        user.bio = ""
+        user.first_name = ""
+        user.last_name = ""
+        user.is_active = False
+        
+        if user.avatar:
+            user.avatar.delete(save=False)
+            
+        # Jika host, hapus info creator profile sensitif
+        if hasattr(user, 'creator_profile'):
+            profile = user.creator_profile
+            profile.display_name = "Deleted Host"
+            profile.social_links = {}
+            profile.website = ""
+            profile.save()
+            
+        user.save()
+        
+        return Response(
+            {"detail": "Akun Anda beserta seluruh data pribadi telah dihapus secara permanen (Anonimisasi)."},
+            status=status.HTTP_200_OK
+        )
+
 
 # ─────────────────────────────────────────────
 # Creator Views
@@ -115,6 +150,19 @@ class CreatorApplyView(APIView):
             return Response(
                 {"detail": "Application already submitted."},
                 status=status.HTTP_400_BAD_REQUEST,
+            )
+            
+        # KYC Enforcement: Wajib memiliki KYC yang APPROVED
+        from .models import KYCDocument
+        has_approved_kyc = KYCDocument.objects.filter(
+            user=user, 
+            status=KYCDocument.Status.APPROVED
+        ).exists()
+        
+        if not has_approved_kyc:
+            return Response(
+                {"detail": "Anda harus menyelesaikan verifikasi identitas (KYC) yang disetujui Admin sebelum menjadi Host."},
+                status=status.HTTP_403_FORBIDDEN,
             )
 
         serializer = CreatorApplySerializer(data=request.data)

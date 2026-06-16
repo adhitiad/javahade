@@ -25,16 +25,21 @@ DEFAULT_FILE_STORAGE = "django.core.files.storage.FileSystemStorage"
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
+    "filters": {
+        "request_id": {
+            "()": "common.logging.RequestIDFilter",
+        },
+    },
     "formatters": {
-        "verbose": {
-            "format": "[{asctime}] {levelname} {name} {message}",
-            "style": "{",
+        "json": {
+            "()": "common.logging.JSONFormatter",
         },
     },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
-            "formatter": "verbose",
+            "filters": ["request_id"],
+            "formatter": "json",
         },
     },
     "root": {
