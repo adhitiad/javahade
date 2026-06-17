@@ -3,10 +3,12 @@ import freecurrencyapi
 from django.core.cache import cache
 from decimal import Decimal
 
+from django.conf import settings
+
 logger = logging.getLogger(__name__)
 
-# Hardcoded API key based on user request
-API_KEY = "fca_live_jdiN8WlOwMsO3wcxLClk1FZj3DQubCvTIoZkWEs2"
+# Fetch API key from Django settings instead of hardcoding
+API_KEY = getattr(settings, "FREECURRENCY_API_KEY", "")
 
 class ExchangeRateService:
     @classmethod

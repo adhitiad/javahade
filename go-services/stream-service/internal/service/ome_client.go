@@ -2,7 +2,6 @@
 package service
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -82,25 +81,3 @@ func (s *OMEService) GetStreamInfo(appName, streamName string) (map[string]inter
 	json.Unmarshal(body, &result)
 	return result, nil
 }
-
-// omeRequest is a helper for making requests to OME API.
-func (s *OMEService) omeRequest(method, path string, body interface{}) (*http.Response, error) {
-	var reqBody io.Reader
-	if body != nil {
-		data, _ := json.Marshal(body)
-		reqBody = bytes.NewReader(data)
-	}
-
-	req, err := http.NewRequest(method, s.baseURL+path, reqBody)
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Content-Type", "application/json")
-	if s.accessToken != "" {
-		req.Header.Set("Authorization", "Bearer "+s.accessToken)
-	}
-
-	return s.client.Do(req)
-}
-

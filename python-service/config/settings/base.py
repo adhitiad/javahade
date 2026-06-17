@@ -174,9 +174,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 # Authentication URLs (untuk booking frontend)
 # =============================================================================
 
-LOGIN_URL = "/booking/login/"
-LOGIN_REDIRECT_URL = "/booking/"
-LOGOUT_REDIRECT_URL = "/booking/login/"
+LOGIN_URL = "booking:login"
+LOGIN_REDIRECT_URL = "booking:dashboard"
+LOGOUT_REDIRECT_URL = "booking:login"
 
 # =============================================================================
 # Chat WebSocket (Go service)
@@ -267,8 +267,8 @@ CORS_ALLOW_CREDENTIALS = True
 # Celery
 # =============================================================================
 
-CELERY_BROKER_URL = config("CELERY_BROKER_URL", default="redis://localhost:6379/1")
-CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default="redis://localhost:6379/2")
+CELERY_BROKER_URL = config("CELERY_BROKER_URL", default=REDIS_URL)
+CELERY_RESULT_BACKEND = config("CELERY_RESULT_BACKEND", default=REDIS_URL)
 CELERY_ACCEPT_CONTENT = ["json"]
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
@@ -316,8 +316,12 @@ REDIS_PUBSUB_URL = config("REDIS_URL", default="redis://localhost:6379/0")
 # =============================================================================
 # Groq AI Integration
 # =============================================================================
-
+# AI Configuration
 GROQ_API_KEY = config("GROQ_API_KEY", default="")
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
+
+# External APIs
+FREECURRENCY_API_KEY = config("FREECURRENCY_API_KEY", default="")
 
 # =============================================================================
 # PAYPAL CONFIGURATION
@@ -329,7 +333,7 @@ PAYPAL_MODE = config("PAYPAL_MODE", default="sandbox") # "sandbox" or "live"
 # =============================================================================
 # Moderation API Keys
 # =============================================================================
-OPENAI_API_KEY = config("OPENAI_API_KEY", default="dummy-key")
+OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 GOOGLE_APPLICATION_CREDENTIALS = config("GOOGLE_APPLICATION_CREDENTIALS", default="")
 
 CURRENCY_API_KEY = config("CURRENCY_API_KEY", default="")

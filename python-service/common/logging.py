@@ -32,8 +32,13 @@ class JSONFormatter(logging.Formatter):
         log_record["message"] = msg
 
         # Correlation ID
-        if hasattr(record, 'request_id'):
-            log_record["request_id"] = record.request_id
+        request_id = getattr(record, 'request_id', None)
+        if request_id:
+            log_record["request_id"] = request_id
+            
+        user_id = getattr(record, 'user_id', None)
+        if user_id:
+            log_record["user_id"] = user_id
 
         if record.exc_info:
             log_record["exception"] = self.formatException(record.exc_info)
@@ -55,6 +60,11 @@ class CorrelationIDMiddleware:
         request_id = request.headers.get("X-Request-ID", str(uuid.uuid4()))
         _local.request_id = request_id
         
+        if hasattr(request, 'user') and request.user.is_authenticated:
+            _local.user_id = str(request.user.id)
+        else:
+            _local.user_id = 'anonymous'
+        
         response = self.get_response(request)
         response["X-Request-ID"] = request_id
         return response
@@ -63,4 +73,5 @@ class RequestIDFilter(logging.Filter):
     """Filter untuk menyuntikkan request_id ke dalam record log."""
     def filter(self, record):
         record.request_id = getattr(_local, 'request_id', 'system')
+        record.user_id = getattr(_local, 'user_id', 'anonymous')
         return True

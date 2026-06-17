@@ -12,10 +12,13 @@ import (
 type Config struct {
 	// General
 	ProjectName string `envconfig:"PROJECT_NAME" default:"kreativa"`
-	Debug       bool   `envconfig:"DEBUG" default:"true"`
+	Debug       bool   `envconfig:"DEBUG" default:"false"`
 
 	// PostgreSQL
 	DatabaseURL string `envconfig:"DATABASE_URL" default:"postgres://kreativa:kreativa_pass@localhost:5432/kreativa_db"`
+
+	// APIs
+	ModerationAPIURL string `envconfig:"MODERATION_API_URL" default:"http://python-api:8000/api/v1/moderation/check/"`
 
 	// Redis
 	RedisURL string `envconfig:"REDIS_URL" default:"redis://localhost:6379/0"`
@@ -33,7 +36,7 @@ type Config struct {
 	StreamServicePort  int `envconfig:"STREAM_SERVICE_PORT" default:"8082"`
 
 	// OvenMediaEngine
-	OMEAPIURL         string `envconfig:"OME_API_URL" default:"http://localhost:8081/v1"`
+	OMEAPIURL         string `envconfig:"OME_API_URL" default:"http://ome:8081/v1"`
 	OMEAPIAccessToken string `envconfig:"OME_API_ACCESS_TOKEN" default:""`
 
 	// CORS

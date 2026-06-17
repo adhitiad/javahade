@@ -99,6 +99,9 @@ def generate_recovery_codes_view(request):
     return redirect("booking:recovery_codes")
 
 
+from django_ratelimit.decorators import ratelimit
+
+@ratelimit(key='ip', rate='5/m', method=['POST'], block=True)
 def login_view(request):
     """
     Halaman login user.
@@ -123,6 +126,7 @@ def login_view(request):
     return render(request, "booking/login.html", {"form": form})
 
 
+@ratelimit(key='ip', rate='5/m', method=['POST'], block=True)
 def login_recovery_view(request):
     """
     Halaman login menggunakan Recovery Code.
@@ -135,10 +139,8 @@ def login_recovery_view(request):
         username_or_email = request.POST.get("username", "").strip()
         code = request.POST.get("recovery_code", "").strip()
 
-        from django.contrib.auth import get_user_model
+        from apps.accounts.models import User
         from django.db.models import Q
-
-        User = get_user_model()
 
         # Cari user berdasarkan username atau email
         user = User.objects.filter(
@@ -172,7 +174,10 @@ def logout_view(request):
     """Logout user dan redirect ke halaman login."""
     logout(request)
     messages.info(request, "Anda telah berhasil logout.")
-    return redirect("booking:login")
+    response = redirect("booking:login")
+    response.delete_cookie("access_token")
+    response.delete_cookie("refresh_token")
+    return response
 
 
 # =============================================================================
@@ -542,24 +547,33 @@ def book_host_view(request, username):
                         if exchange_rate <= 0:
                             raise ValueError("Kurs tidak valid.")
 
-                        # Idempotency Check (Mencegah Double Submission dalam 5 menit terakhir)
-                        from datetime import timedelta
-                        from django.utils import timezone
+                        # Lock User and Host to prevent race conditions (M-12, M-13)
+                        locked_user = User.objects.select_for_update().get(id=request.user.id)
+                        locked_host = User.objects.select_for_update().get(id=host_user.id)
 
-                        recent_booking = HostBooking.objects.filter(
-                            user=request.user,
-                            host=host_user,
-                            start_datetime=start_datetime,
-                            created_at__gte=timezone.now() - timedelta(minutes=5),
-                        ).exists()
-                        if recent_booking:
-                            raise ValueError(
-                                "Anda baru saja membuat pesanan untuk slot waktu ini (Idempotency Conflict)."
-                            )
+                        # Idempotency Check
+                        idempotency_key = request.POST.get("idempotency_key")
+                        if idempotency_key:
+                            if HostBooking.objects.filter(idempotency_key=idempotency_key).exists():
+                                raise ValueError("Booking already processed.")
+                        else:
+                            # Fallback if no idempotency key
+                            from datetime import timedelta
+                            from django.utils import timezone
+                            recent_booking = HostBooking.objects.filter(
+                                user=locked_user,
+                                host=locked_host,
+                                start_datetime=start_datetime,
+                                created_at__gte=timezone.now() - timedelta(minutes=5),
+                            ).exists()
+                            if recent_booking:
+                                raise ValueError(
+                                    "Anda baru saja membuat pesanan untuk slot waktu ini (Idempotency Conflict)."
+                                )
 
                         # Surge Pricing Logic
                         active_bookings_count = HostBooking.objects.filter(
-                            host=host_user,
+                            host=locked_host,
                             status__in=[
                                 HostBooking.Status.PENDING,
                                 HostBooking.Status.CONFIRMED,

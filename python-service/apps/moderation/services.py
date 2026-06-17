@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 
 class ContentModerationService:
     @staticmethod
-    def check_content(text: str = None, image_file=None):
+    def check_content(text: str | None = None, image_file=None):
         """
         Sistem Moderasi Skala Produksi (AI & Custom Filter):
         - Teks: Memanggil OpenAI Moderation API + Custom Regex.
@@ -76,15 +76,7 @@ class ContentModerationService:
             if re.search(r'\b' + word + r'\b', text_lower):
                 raise ValidationError("Konten ditolak oleh sistem internal: Mengandung unsur kekerasan/gore/eksploitasi.")
                 
-        # Kata-kata yang diperbolehkan (sebagai pengecualian toleransi)
-        allowed_keywords = ["lesbian", "gl", "girls love"]
-        
-        # Lapis Custom 4: LGBT dilarang, KECUALI Lesbian / GL
-        lgbt_keywords = ["lgbt", "gay", "homo", "transgender", "trans", "queer", "banci", "lesbi", "fujoshi"]
-        
-        for word in lgbt_keywords:
-            if re.search(r'\b' + word + r'\b', text_lower):
-                raise ValidationError("Konten ditolak oleh sistem internal: Mempromosikan grup berbau LGBT dilarang keras (Kecuali tema GL/Lesbian yang dikhususkan).")
+        # (L-12) Pengecualian dan larangan berbau LGBT telah dihapus agar platform inklusif.
 
     @staticmethod
     def _check_image_with_vision(image_file):

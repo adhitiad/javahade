@@ -2,8 +2,11 @@ package service
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/google/uuid"
@@ -26,7 +29,22 @@ func NewStreamService(redis *redis.Client, ome *OMEService) *StreamService {
 // CreateStream creates a new live stream session.
 func (s *StreamService) CreateStream(ctx context.Context, creatorID string, req model.CreateStreamRequest) (*model.Stream, error) {
 	streamID := uuid.New().String()
-	streamKey := uuid.New().String()[:16]
+	
+	// Generate cryptographically secure stream key
+	keyBytes := make([]byte, 16)
+	if _, err := rand.Read(keyBytes); err != nil {
+		return nil, fmt.Errorf("failed to generate stream key: %w", err)
+	}
+	streamKey := hex.EncodeToString(keyBytes)
+
+	rtmpHost := os.Getenv("RTMP_HOST")
+	if rtmpHost == "" {
+		rtmpHost = "localhost:1935"
+	}
+	wsHost := os.Getenv("WS_HOST")
+	if wsHost == "" {
+		wsHost = "localhost:3334"
+	}
 
 	stream := &model.Stream{
 		ID:          streamID,
@@ -34,8 +52,8 @@ func (s *StreamService) CreateStream(ctx context.Context, creatorID string, req 
 		Title:       req.Title,
 		Description: req.Description,
 		StreamKey:   streamKey,
-		IngestURL:   fmt.Sprintf("rtmp://localhost:1935/live/%s", streamKey),
-		PlaybackURL: fmt.Sprintf("wss://localhost:3334/live/%s", streamKey),
+		IngestURL:   fmt.Sprintf("rtmp://%s/live/%s", rtmpHost, streamKey),
+		PlaybackURL: fmt.Sprintf("wss://%s/live/%s", wsHost, streamKey),
 		Status:      "live",
 		ViewerCount: 0,
 		PeakViewers: 0,

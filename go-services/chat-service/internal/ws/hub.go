@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"html"
 	"net/http"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -54,9 +55,9 @@ type Hub struct {
 	// Rooms berdasarkan room ID → set of clients
 	Rooms map[string]map[*Client]bool
 
-	Register    chan *Client
-	Unregister  chan *Client
-	Broadcast   chan RoomMessage
+	Register     chan *Client
+	Unregister   chan *Client
+	Broadcast    chan RoomMessage
 	JoinRoomChan chan JoinRequest
 
 	redis       *redis.Client
@@ -122,9 +123,10 @@ func (h *Hub) Run() {
 					select {
 					case client.Send <- msg.Data:
 					default:
-						close(client.Send)
-						delete(room, client)
-						delete(h.Clients, client.UserID)
+						// Biarkan unregister yang menangani penutupan channel jika penuh
+						go func(c *Client) {
+							h.Unregister <- c
+						}(client)
 					}
 				}
 			}
@@ -221,8 +223,13 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 		// Hanya moderasi pesan bertipe teks
 		if msgType == "text" {
 			reqBody, _ := json.Marshal(map[string]string{"text": content})
-			resp, err := http.Post("http://localhost:8000/api/v1/moderation/check/", "application/json", bytes.NewBuffer(reqBody))
-			
+
+			modURL := os.Getenv("MODERATION_API_URL")
+			if modURL == "" {
+				modURL = "http://python-api:8000/api/v1/moderation/check/"
+			}
+			resp, err := http.Post(modURL, "application/json", bytes.NewBuffer(reqBody))
+
 			if err == nil && resp.StatusCode == http.StatusBadRequest {
 				// Pesan ditolak oleh moderator
 				var respData map[string]interface{}
@@ -231,7 +238,7 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 				if reason == "" {
 					reason = "Pesan melanggar standar komunitas."
 				}
-				
+
 				rejectResp := model.WSMessage{
 					Type:   "error",
 					RoomID: msg.RoomID,
@@ -242,7 +249,7 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 				}
 				data, _ := json.Marshal(rejectResp)
 				client.Send <- data
-				
+
 				log.Warn().
 					Str("user_id", client.UserID).
 					Str("content", content).
@@ -254,12 +261,8 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 			}
 		}
 
-		// Ambil username dari payload atau gunakan client.Username
-		username, _ := msg.Payload["username"].(string)
-		if username == "" {
-			username = client.Username
-		}
-		username = sanitizeContent(username)
+		// Gunakan username asli dari auth token (client.Username) untuk mencegah spoofing
+		username := client.Username
 
 		// Simpan ke MongoDB
 		chatMsg := &model.ChatMessage{
@@ -369,31 +372,39 @@ func (h *Hub) SubscribeNotifications(ctx context.Context) {
 	defer pubsub.Close()
 
 	ch := pubsub.Channel()
-	for msg := range ch {
-		log.Debug().
-			Str("channel", msg.Channel).
-			Str("payload", msg.Payload).
-			Msg("Notifikasi Redis diterima")
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case msg, ok := <-ch:
+			if !ok {
+				return
+			}
+			log.Debug().
+				Str("channel", msg.Channel).
+				Str("payload", msg.Payload).
+				Msg("Notifikasi Redis diterima")
 
-		var event map[string]interface{}
-		if err := json.Unmarshal([]byte(msg.Payload), &event); err != nil {
-			continue
-		}
+			var event map[string]interface{}
+			if err := json.Unmarshal([]byte(msg.Payload), &event); err != nil {
+				continue
+			}
 
-		wsMsg := model.WSMessage{
-			Type: "notification",
-			Payload: map[string]interface{}{
-				"channel": msg.Channel,
-				"data":    event,
-			},
-			Timestamp: time.Now().Unix(),
-		}
-		data, _ := json.Marshal(wsMsg)
+			wsMsg := model.WSMessage{
+				Type: "notification",
+				Payload: map[string]interface{}{
+					"channel": msg.Channel,
+					"data":    event,
+				},
+				Timestamp: time.Now().Unix(),
+			}
+			data, _ := json.Marshal(wsMsg)
 
-		for _, client := range h.Clients {
-			select {
-			case client.Send <- data:
-			default:
+			for _, client := range h.Clients {
+				select {
+				case client.Send <- data:
+				default:
+				}
 			}
 		}
 	}
@@ -515,4 +526,3 @@ func (c *Client) WritePump() {
 		}
 	}
 }
-

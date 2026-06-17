@@ -46,7 +46,7 @@ class PostFeedView(generics.ListAPIView):
             # Get creators the user is subscribed to
             subscribed_creator_ids = user.subscriptions.filter( # type: ignore
                 status="active"
-            ).values_list("tier__creator__user_id", flat=True)
+            ).values_list("tier__creator__user_id", flat=True).distinct()
 
             # Show public posts + subscribed creator's premium posts
             qs = qs.filter(
@@ -76,7 +76,7 @@ class PostDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = Post.objects.select_related("creator")
     lookup_field = "id"
 
-    def get_serializer_class(self):
+    def get_serializer_class(self): # type: ignore
         if self.request.method in ("PUT", "PATCH"):
             return PostCreateSerializer
         return PostSerializer

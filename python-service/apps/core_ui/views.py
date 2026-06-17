@@ -101,7 +101,7 @@ def verify_kyc_view(request):
     # Jika sudah punya KYC yang approved atau pending
     existing_kyc = KYCDocument.objects.filter(user=request.user).order_by('-submitted_at').first()
     if existing_kyc and existing_kyc.status in [KYCDocument.Status.APPROVED, KYCDocument.Status.PENDING]:
-        messages.info(request, f"Status KYC Anda saat ini: {existing_kyc.get_status_display()}")
+        messages.info(request, f"Status KYC Anda saat ini: {existing_kyc.get_status_display()}")  # type: ignore
         return redirect("core_ui:index")
 
     if request.method == "POST":
@@ -420,44 +420,44 @@ def user_wallet_convert_view(request):
     user = request.user
     from decimal import Decimal
     from apps.payments.models import WalletTransaction
+    from apps.payments.services import ExchangeRateService
     from django.db import transaction
-    
-    # Mock Live Rates (in a real app, fetch from an API)
-    rates = {
-        "USD": Decimal("15500.00"),
-        "SGD": Decimal("11500.00"),
-        "MYR": Decimal("3300.00"),
-        "CNY": Decimal("2100.00")
-    }
-    
-    spread = Decimal("0.015") # 1.5% profit spread for platform
     
     total_converted_idr = Decimal("0.00")
     conversions = []
     
     with transaction.atomic():
+        # Lock user for update to prevent race conditions
+        from apps.accounts.models import User
+        user = User.objects.select_for_update().get(id=request.user.id)
+        
+        # Calculate for each currency
         if user.balance_usd > 0:
-            val = user.balance_usd * rates["USD"] * (Decimal("1.00") - spread)
+            rate = ExchangeRateService.get_rate("USD", "IDR", apply_spread=True)
+            val = user.balance_usd * rate
             total_converted_idr += val
-            conversions.append(f"USD {user.balance_usd} -> IDR {val:,.2f}")
+            conversions.append(f"USD {user.balance_usd} -> IDR {val:,.2f} (Rate: {rate:,.2f})")
             user.balance_usd = Decimal("0.00")
             
         if user.balance_sgd > 0:
-            val = user.balance_sgd * rates["SGD"] * (Decimal("1.00") - spread)
+            rate = ExchangeRateService.get_rate("SGD", "IDR", apply_spread=True)
+            val = user.balance_sgd * rate
             total_converted_idr += val
-            conversions.append(f"SGD {user.balance_sgd} -> IDR {val:,.2f}")
+            conversions.append(f"SGD {user.balance_sgd} -> IDR {val:,.2f} (Rate: {rate:,.2f})")
             user.balance_sgd = Decimal("0.00")
             
         if user.balance_myr > 0:
-            val = user.balance_myr * rates["MYR"] * (Decimal("1.00") - spread)
+            rate = ExchangeRateService.get_rate("MYR", "IDR", apply_spread=True)
+            val = user.balance_myr * rate
             total_converted_idr += val
-            conversions.append(f"MYR {user.balance_myr} -> IDR {val:,.2f}")
+            conversions.append(f"MYR {user.balance_myr} -> IDR {val:,.2f} (Rate: {rate:,.2f})")
             user.balance_myr = Decimal("0.00")
             
         if user.balance_cny > 0:
-            val = user.balance_cny * rates["CNY"] * (Decimal("1.00") - spread)
+            rate = ExchangeRateService.get_rate("CNY", "IDR", apply_spread=True)
+            val = user.balance_cny * rate
             total_converted_idr += val
-            conversions.append(f"CNY {user.balance_cny} -> IDR {val:,.2f}")
+            conversions.append(f"CNY {user.balance_cny} -> IDR {val:,.2f} (Rate: {rate:,.2f})")
             user.balance_cny = Decimal("0.00")
             
         if total_converted_idr > 0:
@@ -471,9 +471,9 @@ def user_wallet_convert_view(request):
                 amount=total_converted_idr,
                 currency="IDR",
                 status=WalletTransaction.Status.COMPLETED,
-                notes=f"Auto-Convert (Spread 1.5% applied): {notes_str}"
+                notes=f"Auto-Convert: {notes_str}"
             )
-            messages.success(request, f"Konversi berhasil! Total IDR yang ditambahkan: {total_converted_idr:,.2f}. Telah dipotong spread 1.5%.")
+            messages.success(request, f"Konversi berhasil! Total IDR yang ditambahkan: {total_converted_idr:,.2f}.")
         else:
             messages.warning(request, "Tidak ada saldo asing untuk dikonversi.")
             
@@ -502,24 +502,8 @@ def user_wallet_action_view(request):
         from apps.payments.models import WalletTransaction
         
         if action == "deposit":
-            # Simulasi Deposit langsung berhasil
-            if currency == "USD": user.balance_usd += amount
-            elif currency == "SGD": user.balance_sgd += amount
-            elif currency == "IDR": user.balance_idr += amount
-            else:
-                messages.error(request, "Mata uang tidak valid.")
-                return redirect("core_ui:user_wallet")
-                
-            user.save()
-            WalletTransaction.objects.create(
-                user=user,
-                transaction_type=WalletTransaction.TransactionType.DEPOSIT,
-                amount=amount,
-                currency=currency,
-                status=WalletTransaction.Status.COMPLETED,
-                notes="Top-Up Saldo Kripto/Fiat"
-            )
-            messages.success(request, f"Berhasil deposit {currency} {amount:,.2f} ke dompet Anda.")
+            messages.error(request, "Deposit manual telah dinonaktifkan karena alasan keamanan. Silakan gunakan integrasi PayPal untuk Top-Up Saldo.")
+            return redirect("core_ui:user_wallet")
             
         elif action == "withdraw":
             if not user.is_creator:
@@ -680,7 +664,7 @@ def admin_withdraw_action_view(request, tx_id):
             from apps.notifications.models import Notification
             Notification.objects.create(
                 user=tx.user,
-                type=Notification.NotificationType.PAYMENT_RECEIVED,
+                type=Notification.NotificationType.PAYOUT_COMPLETED,
                 title="Penarikan Disetujui",
                 body=f"Permintaan penarikan {tx.currency} {tx.amount} Anda telah disetujui dan ditransfer."
             )
@@ -855,11 +839,10 @@ def admin_kyc_action_view(request, kyc_id):
     action = request.POST.get("action")
     
     if action == "approve":
-        kyc.status = KYCDocument.Status.VERIFIED
+        kyc.status = KYCDocument.Status.APPROVED
         kyc.save()
         
         # Jadikan host
-        from apps.accounts.models import User
         kyc.user.role = User.Role.HOST
         kyc.user.save()
         
@@ -878,7 +861,7 @@ def admin_kyc_action_view(request, kyc_id):
         messages.success(request, f"KYC untuk {kyc.user.username} disetujui. Akun telah menjadi Host.")
     elif action == "reject":
         kyc.status = KYCDocument.Status.REJECTED
-        kyc.rejection_reason = request.POST.get("reason", "Dokumen tidak valid atau buram.")
+        kyc.reviewer_notes = request.POST.get("reason", "Dokumen tidak valid atau buram.")
         kyc.save()
         
         from apps.notifications.models import Notification

@@ -3,6 +3,8 @@ package ws
 
 import (
 	"net/http"
+	"os"
+	"strings"
 
 	"github.com/gorilla/websocket"
 )
@@ -13,12 +15,18 @@ var Upgrader = websocket.Upgrader{
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		origin := r.Header.Get("Origin")
-		// Mengizinkan koneksi lokal untuk development, 
-		// di production sesuaikan dengan domain resmi (CORS)
-		if origin == "http://localhost:3000" || origin == "http://localhost:8000" || origin == "https://kreativa.app" {
-			return true
+		allowedOrigins := os.Getenv("ALLOWED_ORIGINS")
+		if allowedOrigins == "" {
+			allowedOrigins = "http://localhost:3000,http://localhost:8000,https://kreativa.app"
 		}
-		// Tolak jika origin tidak terdaftar atau kosong (mencegah CSWSH)
+		
+		origins := strings.Split(allowedOrigins, ",")
+		for _, o := range origins {
+			if origin == strings.TrimSpace(o) {
+				return true
+			}
+		}
+		
 		return false
 	},
 }

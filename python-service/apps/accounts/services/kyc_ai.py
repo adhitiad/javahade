@@ -61,27 +61,49 @@ def verify_kyc_with_groq(kyc_document_id):
             # Panggil Groq API Asli
             client = Groq(api_key=api_key)
             
-            # Karena model yang tersedia adalah model teks (bukan vision), 
-            # kita akan meminta LLM menganalisis berdasarkan metadata/nama file.
-            file_info = f"KTP: {kyc.document_file.name}, Selfie: {kyc.selfie_file.name}, Portfolio: {portfolio_photo.image.name if portfolio_photo else 'Tidak Ada'}"
+            # Gunakan Vision Model untuk menganalisis gambar KTP dan Selfie secara langsung
+            messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": (
+                                "Anda adalah sistem verifikasi KYC otomatis. "
+                                "Tugas Anda adalah memeriksa dua gambar berikut: Gambar 1 adalah foto KTP/ID, Gambar 2 adalah foto Selfie wajah. "
+                                "Periksa apakah wajah di KTP dan Selfie adalah orang yang sama, dan KTP terlihat asli. "
+                                "Jawab HANYA dengan format JSON yang valid: {\"is_valid\": true/false, \"reason\": \"penjelasan maksimal 2 kalimat\"}."
+                            )
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_ktp}"
+                            }
+                        },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_selfie}"
+                            }
+                        }
+                    ]
+                }
+            ]
+            
+            if base64_portfolio:
+                messages[0]["content"].append({
+                    "type": "image_url",
+                    "image_url": {
+                        "url": f"data:image/jpeg;base64,{base64_portfolio}"
+                    }
+                })
             
             completion = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": (
-                            "Anda adalah sistem verifikasi KYC otomatis. "
-                            f"Pengguna mengunggah file berikut: {file_info}. "
-                            "Tugas: Analisis nama file tersebut. Jika ada indikasi kata 'reject', 'palsu', atau 'lama', tolak. "
-                            "Jika terlihat normal, setujui. "
-                            "Jawab HANYA dengan format JSON yang valid: {\"is_valid\": true/false, \"reason\": \"penjelasan singkat maksimum 2 kalimat\"}."
-                        )
-                    }
-                ],
+                model="llama-3.2-90b-vision-preview",
+                messages=messages,  # type: ignore
                 temperature=0.1,
                 max_tokens=256,
-                response_format={"type": "json_object"},
             )
             
             response_text = completion.choices[0].message.content or ""

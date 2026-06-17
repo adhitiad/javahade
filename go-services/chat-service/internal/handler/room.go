@@ -105,8 +105,9 @@ func (h *RoomHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 
 	roomID := chi.URLParam(r, "roomID")
 
-	// Use the message service from hub — for now just return empty
-	// In a full implementation, this would query MongoDB
+	// TODO(L-5): Implement GetMessages using MongoDB
+	// Currently returning empty slice as a stub
+	// See Mavis Audit L-5
 	_ = limit
 	_ = offset
 	_ = roomID

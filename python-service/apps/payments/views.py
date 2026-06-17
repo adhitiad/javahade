@@ -26,6 +26,18 @@ class CreatePaymentView(APIView):
         serializer = CreatePaymentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
+        # Check Idempotency Key
+        idempotency_key = request.headers.get("Idempotency-Key")
+        if idempotency_key:
+            from django.core.cache import cache
+            cache_key = f"idemp_pay_{request.user.id}_{idempotency_key}"
+            if cache.get(cache_key):
+                return Response(
+                    {"detail": "Idempotent request: Payment already processing or completed."},
+                    status=status.HTTP_409_CONFLICT
+                )
+            cache.set(cache_key, "processing", timeout=60*5)
+
         from typing import cast
         data = cast(dict, serializer.validated_data)
         provider = get_payment_provider("mock")
@@ -178,7 +190,7 @@ class PayPalCaptureOrderView(APIView):
                     
                     # Cek idempotency: Pastikan Order ID ini belum pernah di-topup
                     from apps.payments.models import WalletTransaction
-                    if WalletTransaction.objects.filter(notes__contains=order_id).exists():
+                    if WalletTransaction.objects.filter(reference_id=order_id).exists():
                         return Response({"error": "Order already processed"}, status=400)
                     
                     # Update Balance
@@ -195,6 +207,7 @@ class PayPalCaptureOrderView(APIView):
                         amount=amount,
                         currency=currency,
                         status=WalletTransaction.Status.COMPLETED,
+                        reference_id=order_id,
                         notes=f"Top-Up via PayPal (Order: {order_id})"
                     )
                 
@@ -207,12 +220,12 @@ class PayPalCaptureOrderView(APIView):
 from .crypto_verify import CryptoVerificationService
 
 class VerifyCryptoTransactionView(APIView):
-    """GET /api/v1/payments/verify-crypto/?txid=...&network=..."""
+    """POST /api/v1/payments/verify-crypto/"""
     permission_classes = [permissions.IsAuthenticated]
 
-    def get(self, request):
-        txid = request.query_params.get('txid')
-        network = request.query_params.get('network')
+    def post(self, request):
+        txid = request.data.get('txid')
+        network = request.data.get('network')
         if not txid or not network:
             return Response({'error': 'txid and network required'}, status=400)
             
@@ -228,6 +241,42 @@ class VerifyCryptoTransactionView(APIView):
             return Response({'error': 'Unsupported network'}, status=400)
             
         if result.get('valid'):
+            from django.db import transaction
+            from decimal import Decimal
+            from apps.payments.models import WalletTransaction
+            
+            with transaction.atomic():
+                user = User.objects.select_for_update().get(id=request.user.id)
+                
+                # Idempotency check
+                if WalletTransaction.objects.filter(reference_id=txid).exists():
+                    return Response({'error': 'Transaction already processed'}, status=400)
+                    
+                amount = Decimal(result.get('amount', 0))
+                currency = result.get('currency', 'USD')
+                
+                if currency == "USDT":
+                    user.balance_usd += amount
+                    currency_record = "USD"
+                elif currency == "BNB":
+                    # Assume 1 BNB = $300 for simplification if not converted beforehand
+                    user.balance_usd += amount * Decimal("300")
+                    currency_record = "USD"
+                else:
+                    currency_record = "USD"
+                    user.balance_usd += amount
+                    
+                user.save()
+                
+                WalletTransaction.objects.create(
+                    user=user,
+                    transaction_type=WalletTransaction.TransactionType.DEPOSIT,
+                    amount=amount,
+                    currency=currency_record,
+                    status=WalletTransaction.Status.COMPLETED,
+                    reference_id=txid,
+                    notes=f"Crypto Deposit via {network.upper()} (TXID: {txid})"
+                )
             return Response(result, status=200)
         else:
             return Response(result, status=400)
@@ -417,6 +466,8 @@ class CreateStreamBountyAPIView(APIView):
         with transaction.atomic():
             from typing import cast
             user = cast(User, request.user)
+            # lock user to prevent race condition
+            user = User.objects.select_for_update().get(id=user.id)
             if user.balance_idr < amount_idr:
                 return Response({"error": "Saldo IDR tidak cukup untuk bounty ini"}, status=400)
                 
@@ -456,54 +507,65 @@ class HostActionStreamBountyAPIView(APIView):
             return Response({"error": "Invalid action. Use accept, complete, or reject"}, status=400)
             
         try:
-            bounty = StreamBounty.objects.get(id=bounty_id, host=request.user)
+            bounty = StreamBounty.objects.get(id=bounty_id)
         except StreamBounty.DoesNotExist:
             return Response({"error": "Bounty not found"}, status=404)
             
         with transaction.atomic():
-            if action == "accept" and bounty.status == StreamBounty.Status.PENDING:
-                bounty.status = StreamBounty.Status.ACCEPTED
-                bounty.save()
-            elif action == "reject" and bounty.status == StreamBounty.Status.PENDING:
-                bounty.status = StreamBounty.Status.REJECTED
-                bounty.save()
-                # Refund challenger
-                challenger = bounty.challenger
-                challenger.balance_idr += bounty.amount_idr
-                challenger.save()
-                from apps.payments.models import WalletTransaction
-                WalletTransaction.objects.create(
-                    user=challenger,
-                    transaction_type=WalletTransaction.TransactionType.REFUND,
-                    amount=bounty.amount_idr,
-                    currency="IDR",
-                    status=WalletTransaction.Status.COMPLETED,
-                    reference_id=str(bounty.id),
-                    notes=f"Refund: Bounty rejected by {bounty.host.username}"
-                )
-            elif action == "complete" and bounty.status == StreamBounty.Status.ACCEPTED:
-                bounty.status = StreamBounty.Status.COMPLETED
-                bounty.save()
+            if action in ["accept", "reject"]:
+                if bounty.host != request.user:
+                    return Response({"error": "Hanya host yang bisa menerima/menolak bounty"}, status=403)
                 
-                # Apply 30% platform fee to bounty? Let's say 20% for bounties
-                from decimal import Decimal
-                platform_fee = bounty.amount_idr * Decimal("0.20")
-                net_host = bounty.amount_idr - platform_fee
-                
-                host = bounty.host
-                host.balance_idr += net_host
-                host.save()
-                from apps.payments.models import WalletTransaction
-                WalletTransaction.objects.create(
-                    user=host,
-                    transaction_type=WalletTransaction.TransactionType.EARNING,
-                    amount=net_host,
-                    currency="IDR",
-                    status=WalletTransaction.Status.COMPLETED,
-                    reference_id=str(bounty.id),
-                    notes=f"Earning from completed bounty by {bounty.challenger.username}"
-                )
-            else:
-                return Response({"error": f"Cannot perform {action} from status {bounty.status}"}, status=400)
+                if action == "accept" and bounty.status == StreamBounty.Status.PENDING:
+                    bounty.status = StreamBounty.Status.ACCEPTED
+                    bounty.save()
+                elif action == "reject" and bounty.status == StreamBounty.Status.PENDING:
+                    bounty.status = StreamBounty.Status.REJECTED
+                    bounty.save()
+                    # Refund challenger
+                    challenger = User.objects.select_for_update().get(id=bounty.challenger.id)
+                    challenger.balance_idr += bounty.amount_idr
+                    challenger.save()
+                    from apps.payments.models import WalletTransaction
+                    WalletTransaction.objects.create(
+                        user=challenger,
+                        transaction_type=WalletTransaction.TransactionType.REFUND,
+                        amount=bounty.amount_idr,
+                        currency="IDR",
+                        status=WalletTransaction.Status.COMPLETED,
+                        reference_id=str(bounty.id),
+                        notes=f"Refund: Bounty rejected by {bounty.host.username}"
+                    )
+                else:
+                    return Response({"error": f"Cannot perform {action} from status {bounty.status}"}, status=400)
+                    
+            elif action == "complete":
+                if bounty.challenger != request.user:
+                    return Response({"error": "Hanya challenger pembuat bounty yang bisa menyelesaikan tantangan ini"}, status=403)
+                    
+                if bounty.status == StreamBounty.Status.ACCEPTED:
+                    bounty.status = StreamBounty.Status.COMPLETED
+                    bounty.save()
+                    
+                    # Apply 20% platform fee
+                    from decimal import Decimal
+                    platform_fee = bounty.amount_idr * Decimal("0.20")
+                    net_host = bounty.amount_idr - platform_fee
+                    
+                    host = User.objects.select_for_update().get(id=bounty.host.id)
+                    host.balance_idr += net_host
+                    host.save()
+                    from apps.payments.models import WalletTransaction
+                    WalletTransaction.objects.create(
+                        user=host,
+                        transaction_type=WalletTransaction.TransactionType.EARNING,
+                        amount=net_host,
+                        currency="IDR",
+                        status=WalletTransaction.Status.COMPLETED,
+                        reference_id=str(bounty.id),
+                        notes=f"Earning from completed bounty by {bounty.challenger.username}"
+                    )
+                else:
+                    return Response({"error": f"Cannot perform complete from status {bounty.status}"}, status=400)
                 
         return Response({"message": f"Bounty marked as {action}", "status": bounty.status}, status=200)

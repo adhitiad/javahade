@@ -11,12 +11,11 @@ class IsCreator(BasePermission):
     message = "You must be an approved creator to perform this action."
 
     def has_permission(self, request, view):  # type: ignore
-        return (
-            request.user
-            and request.user.is_authenticated
-            and request.user.is_creator
-            and hasattr(request.user, "creator_profile")
-        )
+        if not request.user or not request.user.is_authenticated:
+            return False
+        if request.user.is_superuser or request.user.is_staff:
+            return True
+        return request.user.is_creator and hasattr(request.user, "creator_profile")
 
 
 class IsOwnerOrReadOnly(BasePermission):

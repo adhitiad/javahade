@@ -24,15 +24,13 @@ services:
       - kreativa_net
 
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    image: edoburu/pgbouncer:1.21.0
     container_name: kreativa_pgbouncer
     environment:
-      DATABASE_URL: "postgres://kreativa:kreativa_pass@postgres:5432/kreativa_db"
+      DATABASE_URL: "postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}"
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 20
-    ports:
-      - "6432:6432"
     depends_on:
       postgres:
         condition: service_healthy
@@ -46,6 +44,11 @@ services:
       - "6379:6379"
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
     networks:
       - kreativa_net
 
@@ -59,16 +62,16 @@ services:
     environment:
       - DB_HOST=pgbouncer
       - DB_PORT=6432
-      - DB_NAME=kreativa_db
-      - DB_USER=kreativa
-      - DB_PASS=kreativa_pass
-      - REDIS_URL=redis://redis:6379/0
-      - DEBUG=False
+      - DB_NAME=${DB_NAME:-kreativa_db}
+      - DB_USER=${DB_USER:-kreativa}
+      - DB_PASSWORD=${DB_PASSWORD:-kreativa_pass}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DEBUG=${DEBUG:-False}
     depends_on:
       pgbouncer:
         condition: service_started
       redis:
-        condition: service_started
+        condition: service_healthy
     ports:
       - "8000:8000"
     networks:
@@ -82,11 +85,11 @@ services:
     environment:
       - DB_HOST=pgbouncer
       - DB_PORT=6432
-      - DB_NAME=kreativa_db
-      - DB_USER=kreativa
-      - DB_PASS=kreativa_pass
-      - REDIS_URL=redis://redis:6379/0
-      - DEBUG=False
+      - DB_NAME=${DB_NAME:-kreativa_db}
+      - DB_USER=${DB_USER:-kreativa}
+      - DB_PASSWORD=${DB_PASSWORD:-kreativa_pass}
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DEBUG=${DEBUG:-False}
     depends_on:
       - python-api
     networks:
@@ -104,10 +107,11 @@ services:
     environment:
       - DB_HOST=pgbouncer
       - DB_PORT=6432
-      - DB_USER=kreativa
-      - DB_PASSWORD=kreativa_pass
-      - DB_NAME=kreativa_db
+      - DB_NAME=${DB_NAME:-kreativa_db}
+      - DB_USER=${DB_USER:-kreativa}
+      - DB_PASSWORD=${DB_PASSWORD:-kreativa_pass}
       - REDIS_ADDR=redis:6379
+      - BOOKING_SERVICE_PORT=3333
       - PORT=3333
     ports:
       - "3333:3333"
@@ -115,7 +119,7 @@ services:
       pgbouncer:
         condition: service_started
       redis:
-        condition: service_started
+        condition: service_healthy
     networks:
       - kreativa_net
 

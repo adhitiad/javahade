@@ -3,6 +3,9 @@ package middleware
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -64,6 +67,25 @@ func JWTAuth(secretKey string) func(http.Handler) http.Handler {
 			if tokenType != "access" {
 				http.Error(w, `{"detail":"Invalid token type"}`, http.StatusUnauthorized)
 				return
+			}
+			
+			// Validate Device Fingerprint
+			tokenFp, _ := claims["device_fingerprint"].(string)
+			if tokenFp != "" {
+				ip := r.Header.Get("X-Forwarded-For")
+				if ip == "" {
+					ip = strings.Split(r.RemoteAddr, ":")[0]
+				}
+				userAgent := r.UserAgent()
+				rawFp := fmt.Sprintf("%v-%s-%s", userID, userAgent, ip)
+				hash := sha256.Sum256([]byte(rawFp))
+				computedFp := hex.EncodeToString(hash[:])
+				
+				// Optional: strict check
+				if tokenFp != computedFp {
+					http.Error(w, `{"detail":"Device fingerprint mismatch"}`, http.StatusUnauthorized)
+					return
+				}
 			}
 
 			// Extract Role

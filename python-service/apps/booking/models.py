@@ -245,13 +245,11 @@ class Booking(models.Model):
                 return
 
     def save(self, *args, **kwargs):
-        """Override save untuk menjalankan validasi dan menghitung biaya."""
+        """Override save untuk menghitung biaya."""
         # Hitung total biaya
         if self.room and self.duration_hours:
             self.total_cost = self.room.hourly_rate * self.duration_hours
 
-        # Jalankan validasi
-        self.full_clean()
         super().save(*args, **kwargs)
 
 
@@ -320,7 +318,6 @@ class HostBookingRate(models.Model):
         verbose_name_plural = "Host Rates"
 
     def save(self, *args, **kwargs):
-        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):
@@ -421,6 +418,11 @@ class HostBooking(models.Model):
         max_digits=12, decimal_places=2, default=0, verbose_name="Net Payout Host (77.3%)"
     )
     
+    idempotency_key = models.CharField(
+        max_length=255, blank=True, null=True, unique=True,
+        verbose_name="Idempotency Key", help_text="Mencegah double booking"
+    )
+    
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -442,6 +444,7 @@ class HostBooking(models.Model):
     @property
     def is_elite_client(self):
         """Cek apakah klien (user) adalah Elite Fan (Subscribe aktif) dari Host ini."""
+        # pyrefly: ignore [missing-import]
         from apps.subscriptions.models import Subscription
         if hasattr(self, 'host'):
             return Subscription.objects.filter(

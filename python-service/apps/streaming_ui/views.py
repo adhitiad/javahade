@@ -128,19 +128,31 @@ class OMEAdmissionWebhookView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        import base64
+        import hmac
+        import hashlib
+        from django.conf import settings
+        
+        # 1. Verifikasi Signature OME (X-OME-Signature)
+        secret = getattr(settings, 'OME_WEBHOOK_SECRET', '')
+        signature_header = request.headers.get('X-OME-Signature')
+        if secret and signature_header:
+            expected_hmac = hmac.new(secret.encode(), request.body, hashlib.sha1).digest()
+            expected_b64 = base64.b64encode(expected_hmac).decode()
+            if not hmac.compare_digest(expected_b64, signature_header):
+                return Response({"allowed": False, "reason": "Invalid signature"}, status=403)
+
         payload = request.data.get("request", {})
         direction = payload.get("direction")
         stream_name = payload.get("streamName")
         
-        # Hanya validasi publisher (incoming)
+        # 2. Incoming = Publisher RTMP/WebRTC
         if direction == "incoming":
             if not stream_name:
                 return Response({"allowed": False, "reason": "No stream name"}, status=403)
                 
-            # Cek apakah stream key valid di database
             try:
                 stream = LiveStream.objects.get(stream_key=stream_name, is_deleted=False)
-                # Bisa juga cek apakah status != ENDED
                 if stream.status == LiveStream.Status.ENDED:
                     return Response({"allowed": False, "reason": "Stream ended"}, status=403)
                 
@@ -148,6 +160,14 @@ class OMEAdmissionWebhookView(APIView):
             except LiveStream.DoesNotExist:
                 return Response({"allowed": False, "reason": "Invalid stream key"}, status=403)
                 
-        # Izinkan outgoing / viewer by default (bisa diproteksi via signed policy)
-        return Response({"allowed": True}, status=200)
+        # 3. Outgoing = Player/Viewer (hanya allow jika stream publik atau via SignedToken)
+        elif direction == "outgoing":
+            # Jika menggunakan SignedToken OME, token divalidasi oleh OME secara internal.
+            # Namun kita tetap verifikasi apakah stream exist.
+            try:
+                stream = LiveStream.objects.get(stream_key=stream_name, is_deleted=False)
+                return Response({"allowed": True}, status=200)
+            except LiveStream.DoesNotExist:
+                return Response({"allowed": False, "reason": "Stream not found"}, status=404)
 
+        return Response({"allowed": False, "reason": "Unknown direction"}, status=400)

@@ -132,10 +132,10 @@ class UserDeleteView(APIView):
     
     def delete(self, request):
         user = request.user
-        
+        import uuid
         # Data Scrubbing (Anonimisasi) untuk menjaga integritas transaksi/Saga
-        scrubbed_id = f"deleted_{user.id}"
-        user.username = scrubbed_id[:150] # Batasi panjang username
+        scrubbed_id = f"deleted_{uuid.uuid4().hex[:16]}"
+        user.username = scrubbed_id
         user.email = f"{scrubbed_id}@kreativa.app"
         user.bio = ""
         user.first_name = ""
