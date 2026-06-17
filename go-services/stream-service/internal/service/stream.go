@@ -120,20 +120,44 @@ func (s *StreamService) StopStream(ctx context.Context, streamID, creatorID stri
 	return nil
 }
 
-// ListLiveStreams returns all currently live streams.
+// ListLiveStreams returns all currently live streams (Optimized with Redis Pipeline).
 func (s *StreamService) ListLiveStreams(ctx context.Context) ([]*model.Stream, error) {
-	streamIDs, err := s.redis.SMembers(ctx, "streams:live").Result()
+	dbCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+	defer cancel()
+
+	streamIDs, err := s.redis.SMembers(dbCtx, "streams:live").Result()
 	if err != nil {
 		return nil, err
 	}
+	if len(streamIDs) == 0 {
+		return []*model.Stream{}, nil
+	}
+
+	pipe := s.redis.Pipeline()
+	var metadataCmds []*redis.StringCmd
+	var viewerCmds []*redis.StringCmd
+
+	for _, id := range streamIDs {
+		metadataCmds = append(metadataCmds, pipe.Get(dbCtx, fmt.Sprintf("stream:%s", id)))
+		viewerCmds = append(viewerCmds, pipe.Get(dbCtx, fmt.Sprintf("stream:%s:viewers", id)))
+	}
+
+	// Eksekusi semua command dalam 1 network roundtrip
+	_, _ = pipe.Exec(dbCtx)
 
 	var streams []*model.Stream
-	for _, id := range streamIDs {
-		stream, err := s.GetStream(ctx, id)
-		if err == nil {
-			// Don't expose stream key to viewers
-			stream.StreamKey = ""
-			streams = append(streams, stream)
+	for i := range streamIDs {
+		data, err := metadataCmds[i].Result()
+		if err != nil {
+			continue // skip broken stream
+		}
+		
+		var stream model.Stream
+		if err := json.Unmarshal([]byte(data), &stream); err == nil {
+			count, _ := viewerCmds[i].Int()
+			stream.ViewerCount = count
+			stream.StreamKey = "" // Jangan expose stream key ke publik
+			streams = append(streams, &stream)
 		}
 	}
 

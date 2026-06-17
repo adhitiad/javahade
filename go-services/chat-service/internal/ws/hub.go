@@ -228,7 +228,10 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 			if modURL == "" {
 				modURL = "http://python-api:8000/api/v1/moderation/check/"
 			}
-			resp, err := http.Post(modURL, "application/json", bytes.NewBuffer(reqBody))
+			
+			// Optimasi: Gunakan Timeout 2 Detik agar WebSocket Client tidak Freeze
+			httpClient := &http.Client{Timeout: 2 * time.Second}
+			resp, err := httpClient.Post(modURL, "application/json", bytes.NewBuffer(reqBody))
 
 			if err == nil && resp.StatusCode == http.StatusBadRequest {
 				// Pesan ditolak oleh moderator
