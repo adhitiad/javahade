@@ -1,0 +1,17 @@
+{% for post in posts %}
+    {% include "components/_post_card.html" with post=post liked_post_ids=liked_post_ids %}
+{% endfor %}
+
+{% if posts.has_next %}
+    <div hx-get="{% url 'core_ui:htmx_feed_posts' %}?page={{ posts.next_page_number }}"
+         hx-trigger="intersect once"
+         hx-swap="outerHTML"
+         class="py-6">
+        <!-- Skeleton Loader placeholder while loading next page -->
+        <div class="glass rounded-3xl border border-white/5 overflow-hidden skeleton-loader h-64 w-full"></div>
+    </div>
+{% else %}
+    <div class="py-10 text-center">
+        <p class="text-gray-500 font-medium text-sm">✅ Anda sudah melihat semua postingan.</p>
+    </div>
+{% endif %}

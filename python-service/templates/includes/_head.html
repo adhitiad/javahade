@@ -74,6 +74,7 @@
               "fade-in": "fadeIn 0.5s ease-out",
               "slide-up": "slideUp 0.4s ease-out",
               "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+              "shimmer": "shimmer 2s infinite linear",
             },
             keyframes: {
               fadeIn: {
@@ -83,6 +84,10 @@
               slideUp: {
                 "0%": { opacity: "0", transform: "translateY(20px)" },
                 "100%": { opacity: "1", transform: "translateY(0)" },
+              },
+              shimmer: {
+                "0%": { backgroundPosition: "-1000px 0" },
+                "100%": { backgroundPosition: "1000px 0" },
               },
             },
           },
@@ -100,6 +105,9 @@
 
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
 
     <!-- DOMPurify untuk Keamanan Anti-XSS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
@@ -127,6 +135,14 @@
         -webkit-background-clip: text;
         -webkit-text-fill-color: transparent;
         background-clip: text;
+      }
+      /* Shimmer loader utility */
+      .skeleton-loader {
+        background: #374151;
+        background-image: linear-gradient(to right, #374151 0%, #4b5563 20%, #374151 40%, #374151 100%);
+        background-repeat: no-repeat;
+        background-size: 1000px 100%;
+        animation: shimmer 2s infinite linear forwards;
       }
       /* Scrollbar kustom */
       ::-webkit-scrollbar {

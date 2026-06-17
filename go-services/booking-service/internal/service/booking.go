@@ -3,6 +3,7 @@ package service
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -33,9 +34,13 @@ func (s *BookingService) GetRedis() *redis.Client {
 
 // CreateSlot creates a new booking slot.
 func (s *BookingService) CreateSlot(ctx context.Context, creatorID uuid.UUID, req model.CreateSlotRequest) (*model.BookingSlot, error) {
+	// Anti-Goroutine Leak: Proteksi Timeout 5 Detik
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	// Overlap Detection: Pastikan tidak ada slot yang bertabrakan waktunya
 	var overlapCount int
-	err := s.db.QueryRow(ctx,
+	err := s.db.QueryRow(dbCtx,
 		`SELECT COUNT(*) FROM booking_slots 
 		 WHERE creator_id = $1 AND status != 'cancelled' 
 		 AND (start_time < $2 AND end_time > $3)`,
@@ -82,15 +87,31 @@ func (s *BookingService) CreateSlot(ctx context.Context, creatorID uuid.UUID, re
 func (s *BookingService) ListSlots(ctx context.Context, creatorID string) ([]model.BookingSlot, error) {
 	var slots []model.BookingSlot
 
+	// Redis Cache Check (TTL: 30s)
+	cacheKey := "booking_slots:all"
+	if creatorID != "" {
+		cacheKey = "booking_slots:creator:" + creatorID
+	}
+	cachedData, err := s.redis.Get(ctx, cacheKey).Result()
+	if err == nil && cachedData != "" {
+		if err := json.Unmarshal([]byte(cachedData), &slots); err == nil {
+			return slots, nil
+		}
+	}
+
+	// Anti-Goroutine Leak: Proteksi Timeout 5 Detik
+	dbCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	query := `SELECT id, creator_id, title, description, start_time, end_time, max_seats, price, currency, status, created_at
 	           FROM booking_slots WHERE status = 'available' AND start_time > NOW()`
 
 	var rows interface{ Close() }
-	var err error
+	err = nil
 
 	if creatorID != "" {
 		query += " AND creator_id = $1 ORDER BY start_time"
-		r, e := s.db.Query(ctx, query, creatorID)
+		r, e := s.db.Query(dbCtx, query, creatorID)
 		rows = r
 		err = e
 		defer r.Close()
@@ -110,7 +131,7 @@ func (s *BookingService) ListSlots(ctx context.Context, creatorID string) ([]mod
 		}
 	} else {
 		query += " ORDER BY start_time"
-		r, e := s.db.Query(ctx, query)
+		r, e := s.db.Query(dbCtx, query)
 		rows = r
 		err = e
 		defer r.Close()
@@ -134,6 +155,12 @@ func (s *BookingService) ListSlots(ctx context.Context, creatorID string) ([]mod
 	if slots == nil {
 		slots = []model.BookingSlot{}
 	}
+	
+	// Simpan ke Redis (Cache Miss)
+	if jsonData, err := json.Marshal(slots); err == nil {
+		s.redis.Set(ctx, cacheKey, jsonData, 30*time.Second)
+	}
+
 	return slots, nil
 }
 

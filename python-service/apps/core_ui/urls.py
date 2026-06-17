@@ -30,4 +30,11 @@ urlpatterns = [
     path("privacy/", views.privacy_view, name="privacy"),
     path("terms/", views.terms_view, name="terms"),
     path("buy-rating-package/", views.buy_rating_package_view, name="buy_rating_package"),
+    # HTMX Notification Endpoints
+    path("htmx/notifications/badge/", views.htmx_notification_badge, name="htmx_notification_badge"),
+    path("htmx/notifications/dropdown/", views.htmx_notification_dropdown, name="htmx_notification_dropdown"),
+    path("htmx/notifications/<uuid:id>/read/", views.htmx_notification_read, name="htmx_notification_read"),
+    # HTMX Feed Endpoints
+    path("htmx/feed/", views.htmx_feed_posts, name="htmx_feed_posts"),
+    path("htmx/feed/<uuid:post_id>/like/", views.htmx_like_post, name="htmx_like_post"),
 ]

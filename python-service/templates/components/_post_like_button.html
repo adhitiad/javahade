@@ -1,0 +1,10 @@
+<button class="flex items-center gap-2 transition-all transform active:scale-90 
+               {% if is_liked %}text-pink-500{% else %}text-gray-400 hover:text-pink-500{% endif %}"
+        hx-post="{% url 'core_ui:htmx_like_post' post.id %}"
+        hx-target="this"
+        hx-swap="outerHTML">
+    <span class="text-xl transition-transform {% if is_liked %}scale-110{% endif %}">
+        {% if is_liked %}❤️{% else %}🤍{% endif %}
+    </span> 
+    <span class="font-medium {% if is_liked %}text-pink-400{% endif %}">{{ post.like_count }}</span>
+</button>

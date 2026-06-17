@@ -9,13 +9,13 @@
         
         <div class="absolute top-0 left-0 -ml-16 -mt-16 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
 
-        <div class="relative z-10">
+        <div class="relative z-10" id="settings-form-container">
             <div class="text-center mb-10">
                 <h1 class="text-3xl font-extrabold text-white tracking-tight mb-3">Pengaturan <span class="text-emerald-400">Notifikasi</span></h1>
                 <p class="text-gray-400">Sesuaikan bagaimana Javahade menghubungi Anda.</p>
             </div>
 
-            <form method="POST" class="space-y-8">
+            <form hx-post="{% url 'booking:settings' %}" hx-target="body" hx-swap="outerHTML" class="space-y-8">
                 {% csrf_token %}
                 
                 <div class="bg-gray-800/30 rounded-xl border border-gray-700/50 p-6 space-y-6">
@@ -45,8 +45,18 @@
                 </div>
 
                 <div class="pt-6 border-t border-gray-700/50 flex gap-4">
-                    <button type="submit" class="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition-all card-hover flex justify-center items-center gap-2">
-                        <span>🛡️</span> Simpan Pengaturan
+                    <button type="submit" class="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition-all card-hover flex justify-center items-center gap-2 group relative">
+                        <span class="group-[.htmx-request]:hidden">🛡️</span>
+                        <span class="group-[.htmx-request]:hidden">Simpan Pengaturan</span>
+                        
+                        <!-- HTMX Loading Spinner -->
+                        <div class="hidden group-[.htmx-request]:flex items-center gap-2">
+                            <svg class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Menyimpan...</span>
+                        </div>
                     </button>
                     <a href="{% url 'booking:dashboard' %}" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all flex justify-center items-center">
                         Batal

@@ -1501,10 +1501,16 @@ def edit_profile_view(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Profil berhasil diperbarui.")
+            if request.headers.get('HX-Request'):
+                response = render(request, "booking/edit_profile.html", {"form": form})
+                response['HX-Push-Url'] = request.path
+                return response
             return redirect("booking:edit_profile")
     else:
         form = ProfileEditForm(instance=request.user)
     
+    if request.headers.get('HX-Request') and request.method == "POST":
+        return render(request, "booking/edit_profile.html", {"form": form})
     return render(request, "booking/edit_profile.html", {"form": form})
 
 
@@ -1522,8 +1528,14 @@ def settings_view(request):
         if form.is_valid():
             form.save()
             messages.success(request, "Pengaturan berhasil disimpan.")
+            if request.headers.get('HX-Request'):
+                response = render(request, "booking/settings.html", {"form": form})
+                response['HX-Push-Url'] = request.path
+                return response
             return redirect("booking:settings")
     else:
         form = SettingsForm(instance=request.user)
     
+    if request.headers.get('HX-Request') and request.method == "POST":
+        return render(request, "booking/settings.html", {"form": form})
     return render(request, "booking/settings.html", {"form": form})

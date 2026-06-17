@@ -1,0 +1,63 @@
+<!-- Header -->
+<div class="px-4 py-3 border-b border-gray-700/50 flex justify-between items-center bg-gray-800/40">
+    <h3 class="text-sm font-semibold text-white">Notifikasi Terbaru</h3>
+    <a href="#" class="text-xs text-indigo-400 hover:text-indigo-300">Tandai Semua Dibaca</a>
+</div>
+
+<!-- List -->
+<div class="max-h-[300px] overflow-y-auto">
+    {% if notifications %}
+        <div class="divide-y divide-gray-700/50">
+            {% for notif in notifications %}
+            <div class="p-4 hover:bg-white/5 transition-colors group {% if not notif.is_read %}bg-indigo-500/10{% endif %}">
+                <div class="flex gap-3">
+                    <div class="flex-shrink-0 mt-1">
+                        {% if notif.type == 'new_message' %}
+                            <span class="text-blue-400 text-xl">💬</span>
+                        {% elif notif.type == 'new_host_booking' or notif.type == 'booking_confirmed' %}
+                            <span class="text-emerald-400 text-xl">📅</span>
+                        {% elif notif.type == 'payout_completed' %}
+                            <span class="text-yellow-400 text-xl">💸</span>
+                        {% else %}
+                            <span class="text-gray-400 text-xl">🔔</span>
+                        {% endif %}
+                    </div>
+                    <div class="flex-1">
+                        <p class="text-sm font-medium text-gray-200 mb-1">
+                            {{ notif.title }}
+                        </p>
+                        {% if notif.body %}
+                        <p class="text-xs text-gray-400 line-clamp-2">
+                            {{ notif.body }}
+                        </p>
+                        {% endif %}
+                        <p class="text-[10px] text-gray-500 mt-2">
+                            {{ notif.created_at|timesince }} yang lalu
+                        </p>
+                    </div>
+                    <!-- Mark as read HTMX button -->
+                    {% if not notif.is_read %}
+                    <button class="text-xs text-indigo-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                            hx-post="{% url 'core_ui:htmx_notification_read' notif.id %}"
+                            hx-target="closest div[x-show='open']"
+                            hx-swap="innerHTML"
+                            title="Tandai dibaca">
+                        ✔
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="p-6 text-center text-gray-400">
+            <span class="text-3xl mb-2 block">📭</span>
+            <p class="text-sm">Belum ada notifikasi.</p>
+        </div>
+    {% endif %}
+</div>
+
+<!-- Footer -->
+<div class="px-4 py-3 border-t border-gray-700/50 text-center bg-gray-800/40">
+    <a href="#" class="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Lihat Semua Notifikasi</a>
+</div>

@@ -115,6 +115,13 @@
 
           <!-- User Menu -->
           <div class="flex items-center gap-4">
+            
+            <!-- HTMX Notification Badge (Polling every 10s) -->
+            <div hx-get="{% url 'core_ui:htmx_notification_badge' %}" 
+                 hx-trigger="load, every 10s" 
+                 hx-swap="outerHTML">
+            </div>
+
             <div
               class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full glass-light"
             >
