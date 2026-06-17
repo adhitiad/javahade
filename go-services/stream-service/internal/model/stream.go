@@ -15,6 +15,7 @@ type Stream struct {
 	ThumbnailURL string    `json:"thumbnail_url,omitempty"`
 	Status       string    `json:"status"` // live, ended, scheduled
 	ViewerCount  int       `json:"viewer_count"`
+	MaxViewers   int       `json:"max_viewers"`
 	PeakViewers  int       `json:"peak_viewers"`
 	GiftsTotal   float64   `json:"gifts_total"`
 	StartedAt    time.Time `json:"started_at"`

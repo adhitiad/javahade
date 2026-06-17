@@ -114,3 +114,40 @@ def stream_watch(request, stream_id):
         "viewer_ip": request.META.get('HTTP_CF_CONNECTING_IP', request.META.get('REMOTE_ADDR', '127.0.0.1'))
     }
     return render(request, "streaming/watch.html", context)
+
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import permissions
+
+class OMEAdmissionWebhookView(APIView):
+    """
+    POST /api/v1/streaming/webhook/admission/
+    Webhook dari OvenMediaEngine untuk memvalidasi Publisher (RTMP/WebRTC)
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        payload = request.data.get("request", {})
+        direction = payload.get("direction")
+        stream_name = payload.get("streamName")
+        
+        # Hanya validasi publisher (incoming)
+        if direction == "incoming":
+            if not stream_name:
+                return Response({"allowed": False, "reason": "No stream name"}, status=403)
+                
+            # Cek apakah stream key valid di database
+            try:
+                stream = LiveStream.objects.get(stream_key=stream_name, is_deleted=False)
+                # Bisa juga cek apakah status != ENDED
+                if stream.status == LiveStream.Status.ENDED:
+                    return Response({"allowed": False, "reason": "Stream ended"}, status=403)
+                
+                return Response({"allowed": True}, status=200)
+            except LiveStream.DoesNotExist:
+                return Response({"allowed": False, "reason": "Invalid stream key"}, status=403)
+                
+        # Izinkan outgoing / viewer by default (bisa diproteksi via signed policy)
+        return Response({"allowed": True}, status=200)
+

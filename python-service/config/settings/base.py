@@ -36,6 +36,7 @@ DJANGO_APPS = [
 THIRD_PARTY_APPS = [
     "rest_framework",
     "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
     "storages",
@@ -133,7 +134,14 @@ CACHES = {
 
 # =============================================================================
 # Password validation
-# =============================================================================
+# https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
+
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.Argon2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2SHA1PasswordHasher",
+    "django.contrib.auth.hashers.BCryptSHA256PasswordHasher",
+]
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -189,6 +197,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "common.authentication.CustomJWTAuthentication",
+        "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -218,7 +227,8 @@ REST_FRAMEWORK = {
 # File Uploads
 # =============================================================================
 
-FILE_UPLOAD_MAX_MEMORY_SIZE = 104857600  # 100 MB
+# Default is 2.5MB (2621440). Do not increase to prevent OOM during video streams.
+FILE_UPLOAD_MAX_MEMORY_SIZE = 2621440
 
 # =============================================================================
 # Simple JWT

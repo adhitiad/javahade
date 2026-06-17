@@ -140,6 +140,12 @@ class WalletTransaction(models.Model):
         db_table = "wallet_transactions"
         ordering = ["-created_at"]
 
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+        if self.pk:
+            raise ValidationError("WalletTransaction adalah immutable ledger dan tidak boleh diedit.")
+        super().save(*args, **kwargs)
+
     def __str__(self):
         sign = "+" if self.transaction_type in ["deposit", "earning", "subscription"] else "-"
         return f"{self.get_transaction_type_display()} {sign}{self.currency} {self.amount} - {self.user.username}"  # type: ignore

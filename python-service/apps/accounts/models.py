@@ -51,6 +51,10 @@ class User(AbstractUser):
     # Keamanan / Recovery
     recovery_codes = models.JSONField(default=list, blank=True, help_text="12 Angka pemulihan akun (1-99)")
     jwt_secret_version = models.IntegerField(default=1, verbose_name="JWT Secret Version (Log out All)")
+    transaction_pin = models.CharField(max_length=128, blank=True, null=True, verbose_name="PIN Transaksi (Hashed)")
+    
+    # Privasi & GDPR
+    has_accepted_cookies = models.BooleanField(default=False, verbose_name="Cookie Consent")
     
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -96,6 +100,21 @@ class User(AbstractUser):
             from django.db.models import Avg
             return round(ratings.aggregate(Avg('host_rating_of_user'))['host_rating_of_user__avg'], 1)
         return 0.0
+
+    def set_password(self, raw_password):
+        """Override set_password untuk mencabut seluruh JWT Token lama (Logout dari semua device)."""
+        super().set_password(raw_password)
+        self.jwt_secret_version += 1
+
+    def set_transaction_pin(self, raw_pin):
+        from django.contrib.auth.hashers import make_password
+        self.transaction_pin = make_password(raw_pin)
+
+    def check_transaction_pin(self, raw_pin):
+        from django.contrib.auth.hashers import check_password
+        if not self.transaction_pin:
+            return False
+        return check_password(raw_pin, self.transaction_pin)
 
 
 class CreatorProfile(models.Model):

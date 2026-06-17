@@ -95,6 +95,20 @@ class UserSerializer(serializers.ModelSerializer):
     def get_has_creator_profile(self, obj):
         return hasattr(obj, "creator_profile")
 
+    def update(self, instance, validated_data):
+        avatar = validated_data.get("avatar")
+        if avatar:
+            from apps.moderation.services import ContentModerationService
+            from django.core.exceptions import ValidationError
+            from rest_framework.exceptions import ValidationError as DRFValidationError
+            
+            try:
+                ContentModerationService.check_content(image_file=avatar)
+            except ValidationError as e:
+                raise DRFValidationError({"avatar": str(e.message)})
+                
+        return super().update(instance, validated_data)
+
 
 class UserPublicSerializer(serializers.ModelSerializer):
     """Public user profile (limited fields)."""

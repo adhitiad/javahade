@@ -59,7 +59,18 @@ class ContentModerationService:
         """Memeriksa Custom Rules yang sangat spesifik untuk *business case* (Blokir LGBT kecuali GL/Lesbian)."""
         text_lower = text.lower()
         
-        # Lapis Custom 1: Kekerasan / Gore (Jaga-jaga jika OpenAI down atau lolos)
+        # Lapis Custom 1: Deteksi URL / Tautan (Mencegah Spam/Phishing Link)
+        url_pattern = r'(https?://[^\s]+)|(www\.[^\s]+)|([a-zA-Z0-9-]+\.[a-zA-Z]{2,}(/\S*)?)'
+        if re.search(url_pattern, text_lower):
+            raise ValidationError("Konten ditolak oleh sistem internal: Mengirimkan tautan (link) eksternal dilarang keras di ruang obrolan/komentar.")
+
+        # Lapis Custom 2: Deteksi Spam & Scam (Judi, Investasi Palsu, dsb)
+        scam_keywords = ["slot", "gacor", "investasi", "menang puluhan juta", "klik link", "undian", "pinjol", "cuan cepat"]
+        for word in scam_keywords:
+            if re.search(r'\b' + word + r'\b', text_lower):
+                raise ValidationError("Konten ditolak oleh sistem internal: Terindikasi sebagai pesan SPAM atau SCAM (Judi/Investasi Palsu).")
+
+        # Lapis Custom 3: Kekerasan / Gore (Jaga-jaga jika OpenAI down atau lolos)
         violence_keywords = ["gore", "bunuh", "mutilasi", "eksploitasi", "kekerasan ekstrem"]
         for word in violence_keywords:
             if re.search(r'\b' + word + r'\b', text_lower):
@@ -68,7 +79,7 @@ class ContentModerationService:
         # Kata-kata yang diperbolehkan (sebagai pengecualian toleransi)
         allowed_keywords = ["lesbian", "gl", "girls love"]
         
-        # Lapis Custom 2: LGBT dilarang, KECUALI Lesbian / GL
+        # Lapis Custom 4: LGBT dilarang, KECUALI Lesbian / GL
         lgbt_keywords = ["lgbt", "gay", "homo", "transgender", "trans", "queer", "banci", "lesbi", "fujoshi"]
         
         for word in lgbt_keywords:

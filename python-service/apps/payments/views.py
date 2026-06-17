@@ -161,6 +161,13 @@ class PayPalCaptureOrderView(APIView):
         capture = paypal.capture_order(order_id)
         if capture and capture.get("status") == "COMPLETED":
             try:
+                # Override client input with ACTUAL PayPal capture data if available
+                captures_arr = capture.get("purchase_units", [{}])[0].get("payments", {}).get("captures", [{}])
+                if captures_arr and captures_arr[0].get("amount"):
+                    actual_amt = captures_arr[0]["amount"]
+                    if actual_amt.get("value"): amount_str = actual_amt["value"]
+                    if actual_amt.get("currency_code"): currency = actual_amt["currency_code"]
+                
                 from django.db import transaction
                 from decimal import Decimal
                 amount = Decimal(amount_str)

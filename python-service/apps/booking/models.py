@@ -337,6 +337,7 @@ class HostBooking(models.Model):
         CONFIRMED = "confirmed", "Dikonfirmasi Host"
         CANCELLED = "cancelled", "Dibatalkan"
         COMPLETED = "completed", "Selesai"
+        DISPUTED = "disputed", "Sengketa"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
@@ -359,6 +360,10 @@ class HostBooking(models.Model):
     )
     start_datetime = models.DateTimeField(
         verbose_name="Waktu Mulai"
+    )
+    end_datetime = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name="Waktu Selesai"
     )
     status = models.CharField(
         max_length=15,
@@ -424,6 +429,12 @@ class HostBooking(models.Model):
         ordering = ["-start_datetime"]
         verbose_name = "Host Booking"
         verbose_name_plural = "Host Bookings"
+        indexes = [
+            models.Index(
+                fields=["host", "start_datetime", "end_datetime"],
+                name="idx_host_booking_overlap",
+            ),
+        ]
 
     def __str__(self):
         return f"Host Booking: {self.user.username} menyewa {self.host.username} ({self.rate.get_duration_type_display()})"  # type: ignore
@@ -442,11 +453,31 @@ class HostBooking(models.Model):
 
     def save(self, *args, **kwargs):
         from decimal import Decimal
+        from datetime import timedelta
         
         if self.rate:
             self.currency = self.rate.currency
             if not self.pk or self.total_cost is None:
                 self.total_cost = self.rate.price
+
+            # Hitung end_datetime
+            if self.start_datetime:
+                duration_map = {
+                    "30m": timedelta(minutes=30),
+                    "1h": timedelta(hours=1),
+                    "3h": timedelta(hours=3),
+                    "6h": timedelta(hours=6),
+                    "12h": timedelta(hours=12),
+                    "24h": timedelta(hours=24),
+                    "3d": timedelta(days=3),
+                    "7d": timedelta(days=7),
+                    "14d": timedelta(days=14),
+                    "24d": timedelta(days=24),
+                    "30d": timedelta(days=30),
+                    "3m": timedelta(days=90),
+                }
+                dur = duration_map.get(self.rate.duration_type, timedelta(hours=1))
+                self.end_datetime = self.start_datetime + dur
                 
         if self.total_cost:
             base_val = Decimal(str(self.total_cost))
@@ -519,3 +550,46 @@ class BookingRating(models.Model):
 
     def __str__(self):
         return f"Rating untuk {self.booking.id}"
+
+class HostBookingDispute(models.Model):
+    """
+    Sengketa untuk pesanan (Dispute). Terjadi jika Klien mengeluh tentang layanan
+    Host atau Host mengeluh tentang perilaku Klien.
+    Selama sengketa, status HostBooking menjadi DISPUTED dan Escrow dibekukan.
+    """
+    class Status(models.TextChoices):
+        OPEN = "open", "Menunggu Keputusan Admin"
+        RESOLVED_HOST = "resolved_host", "Dimenangkan Host (Dana diteruskan)"
+        RESOLVED_CLIENT = "resolved_client", "Dimenangkan Klien (Dana di-Refund)"
+        
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    booking = models.OneToOneField(
+        HostBooking,
+        on_delete=models.CASCADE,
+        related_name="dispute"
+    )
+    raised_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        verbose_name="Pelapor"
+    )
+    reason = models.TextField(verbose_name="Alasan Sengketa")
+    evidence_url = models.URLField(blank=True, default="", verbose_name="Bukti (Opsional)")
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.OPEN,
+        verbose_name="Status"
+    )
+    admin_notes = models.TextField(blank=True, default="", verbose_name="Catatan Admin")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "booking_host_disputes"
+        ordering = ["-created_at"]
+        verbose_name = "Dispute"
+        verbose_name_plural = "Disputes"
+
+    def __str__(self):
+        return f"Dispute on Booking {self.booking.id} by {self.raised_by.username}"

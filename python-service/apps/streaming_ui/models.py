@@ -36,7 +36,9 @@ class LiveStream(models.Model):
     
     # Analytics
     viewers_count = models.PositiveIntegerField(default=0)
+    max_viewers = models.PositiveIntegerField(default=0, help_text="Batas maksimum penonton, 0 berarti tanpa batas.")
     
+    is_deleted = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -49,6 +51,11 @@ class LiveStream(models.Model):
             import secrets
             self.stream_key = f"live_{secrets.token_hex(16)}"
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        self.is_deleted = True
+        self.status = self.Status.ENDED
+        self.save()
 
     def __str__(self):
         return f"{self.title} by {self.host.username}"

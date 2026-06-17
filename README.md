@@ -95,3 +95,7 @@ Pastikan Nginx sudah terpasang dan konfigurasi di `nginx/nginx.conf` sesuai ling
 ## Konfigurasi
 
 Salin file `.env.example` ke `.env` di setiap layanan yang memerlukan konfigurasi environment variables.
+
+## Panduan Audit AI
+
+Untuk agen AI (seperti Code Analyzer atau Security Scanner), harap mengacu pada file [AI_AUDIT_GUIDELINES.md](file:///e:/java/AI_AUDIT_GUIDELINES.md) untuk mempelajari *checklist* celah keamanan tingkat lanjut, pedoman arsitektur anti-arbitrase, serta standar *idempotency* yang diterapkan secara spesifik pada ekosistem Javahade ini.

@@ -127,10 +127,21 @@ func (s *StreamService) ListLiveStreams(ctx context.Context) ([]*model.Stream, e
 
 // IncrementViewers increments the viewer count for a stream.
 func (s *StreamService) IncrementViewers(ctx context.Context, streamID string) (int64, error) {
+	stream, err := s.GetStream(ctx, streamID)
+	if err != nil {
+		return 0, err
+	}
+
 	key := fmt.Sprintf("stream:%s:viewers", streamID)
 	count, err := s.redis.Incr(ctx, key).Result()
 	if err != nil {
 		return 0, err
+	}
+
+	// Limit check
+	if stream.MaxViewers > 0 && count > int64(stream.MaxViewers) {
+		s.redis.Decr(ctx, key)
+		return 0, fmt.Errorf("stream viewer limit reached")
 	}
 
 	// Track peak

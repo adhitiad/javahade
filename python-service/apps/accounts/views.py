@@ -49,6 +49,58 @@ class RegisterView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
         )
 
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.conf import settings
+
+class CustomCookieLoginView(TokenObtainPairView):
+    """
+    POST /api/v1/auth/login/
+    Custom login view yang menaruh token di HttpOnly Cookie,
+    BUKAN di body JSON, untuk mencegah pencurian token via XSS.
+    """
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200:
+            access_token = response.data.get('access')
+            refresh_token = response.data.get('refresh')
+            
+            # Hapus token dari JSON body
+            del response.data['access']
+            del response.data['refresh']
+            response.data['detail'] = "Login successful. Tokens are stored in HttpOnly cookies."
+            
+            # Set Cookies
+            response.set_cookie(
+                key='access_token',
+                value=access_token,
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Strict',
+                max_age=3600
+            )
+            response.set_cookie(
+                key='refresh_token',
+                value=refresh_token,
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Strict',
+                max_age=7*24*3600
+            )
+        return response
+
+class LogoutAllDevicesView(APIView):
+    """
+    POST /api/v1/auth/logout-all/
+    Memutus sesi di seluruh perangkat dengan memutar JWT Secret Version.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        user.jwt_secret_version += 1
+        user.save(update_fields=['jwt_secret_version'])
+        return Response({"detail": "Successfully logged out from all devices."}, status=status.HTTP_200_OK)
+
 
 # ─────────────────────────────────────────────
 # User Views
@@ -107,6 +159,68 @@ class UserDeleteView(APIView):
             {"detail": "Akun Anda beserta seluruh data pribadi telah dihapus secara permanen (Anonimisasi)."},
             status=status.HTTP_200_OK
         )
+
+class UserExportView(APIView):
+    """GET /api/v1/users/me/export/ — GDPR Data Portability."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        data = {
+            "profile": {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+                "date_of_birth": str(user.date_of_birth) if user.date_of_birth else None,
+                "date_joined": str(user.date_joined),
+                "has_accepted_cookies": user.has_accepted_cookies,
+            },
+            "wallets": {
+                "USD": float(user.balance_usd),
+                "SGD": float(user.balance_sgd),
+                "IDR": float(user.balance_idr),
+                "MYR": float(user.balance_myr),
+                "CNY": float(user.balance_cny),
+            }
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+class UserConsentView(APIView):
+    """POST /api/v1/users/me/consent/ — Update Cookie Consent."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        accept = request.data.get("accept", True)
+        user = request.user
+        user.has_accepted_cookies = bool(accept)
+        user.save(update_fields=["has_accepted_cookies"])
+        return Response({"detail": "Consent updated."}, status=status.HTTP_200_OK)
+
+class PrivacyDisclosureView(APIView):
+    """GET /api/v1/users/privacy-policy/ — Third-party sharing disclosure."""
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        disclosure = {
+            "version": "1.0",
+            "effective_date": "2026-06-17",
+            "third_party_sharing": [
+                {
+                    "entity": "OpenAI & Google Cloud Vision",
+                    "purpose": "Automated content moderation for chat and profile pictures to ensure community safety."
+                },
+                {
+                    "entity": "PayPal",
+                    "purpose": "Payment processing for top-ups and creator payouts."
+                },
+                {
+                    "entity": "OvenMediaEngine (OME)",
+                    "purpose": "Streaming infrastructure to broadcast your video and audio data securely."
+                }
+            ],
+            "data_retention": "Soft-deleted accounts are anonymized. Deleted stream data is completely erased after 30 days."
+        }
+        return Response(disclosure, status=status.HTTP_200_OK)
 
 
 # ─────────────────────────────────────────────

@@ -1,6 +1,7 @@
 import json
 import logging
 import uuid
+import re
 from django.utils import timezone
 
 class JSONFormatter(logging.Formatter):
@@ -18,8 +19,17 @@ class JSONFormatter(logging.Formatter):
 
         # Masking PII Data
         msg = log_record["message"]
+        
+        # Mask Emails: a***@domain.com
+        msg = re.sub(r'([a-zA-Z0-9_.+-])[a-zA-Z0-9_.+-]+@([a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)', r'\1***@\2', msg)
+        
+        # Mask Phone/NIK (10+ consecutive digits): +62***890
+        msg = re.sub(r'(\+?\d{2})\d{5,}(\d{3})', r'\1***\2', msg)
+
         if "password" in msg.lower() or "token" in msg.lower():
-            log_record["message"] = "*** PII MASKED ***"
+            msg = "*** PII MASKED ***"
+            
+        log_record["message"] = msg
 
         # Correlation ID
         if hasattr(record, 'request_id'):

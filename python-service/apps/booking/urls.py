@@ -67,6 +67,7 @@ urlpatterns = [
     path("call/<uuid:booking_id>/", views.private_call_view, name="private_call"),
     path("report-fake-location/<uuid:booking_id>/", views.client_report_fake_location_view, name="client_report_fake_location"),
     path("submit-rating/<uuid:booking_id>/", views.submit_rating_view, name="submit_rating"),
-    path("client-cancel/<uuid:booking_id>/", views.client_cancel_host_booking_view, name="client_cancel_host_booking"),
-    path("client-reschedule/<uuid:booking_id>/", views.client_reschedule_host_booking_view, name="client_reschedule_host_booking"),
+    path("client-cancel/<uuid:booking_id>/", views.client_cancel_booking_view, name="client_cancel_host_booking"),
+    path("client-complete/<uuid:booking_id>/", views.client_complete_booking_view, name="client_complete_booking"),
+    path("client-dispute/<uuid:booking_id>/", views.client_raise_dispute_view, name="client_raise_dispute"),
 ]
