@@ -170,7 +170,7 @@ def edit_creator_profile_view(request):
         return redirect("core_ui:creator_profile", username=request.user.username)
         
     from apps.accounts.models import CreatorProfile
-    return render(request, "core/edit_creator_profile.html", {
+    return render(request, "creator/profile_edit.html", {
         "profile": profile,
         "categories": CreatorProfile.Category.choices
     })
@@ -204,7 +204,7 @@ def creator_profile_view(request, username):
         )
         return redirect("core_ui:creator_profile", username=username)
 
-    return render(request, "core/creator_profile.html", {
+    return render(request, "creator/profile.html", {
         "creator": creator_user,
         "profile": profile,
         "tiers": tiers,
@@ -401,7 +401,7 @@ def user_wallet_view(request):
     # Ambil 20 transaksi terakhir milik user ini
     transactions = WalletTransaction.objects.filter(user=request.user).order_by("-created_at")[:20]
     
-    return render(request, "core/user_wallet.html", {
+    return render(request, "wallet/detail.html", {
         "user": request.user,
         "transactions": transactions
     })
@@ -775,7 +775,7 @@ def user_topup_view(request):
     Mendukung integrasi langsung ke Gateway PayPal.
     """
     from django.conf import settings
-    return render(request, "core/user_topup.html", {
+    return render(request, "wallet/topup.html", {
         "paypal_client_id": getattr(settings, "PAYPAL_CLIENT_ID", "test")
     })
 

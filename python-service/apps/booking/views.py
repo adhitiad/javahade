@@ -60,7 +60,7 @@ def register_view(request):
     else:
         form = RegisterForm()
 
-    return render(request, "booking/register.html", {"form": form})
+    return render(request, "accounts/register.html", {"form": form})
 
 
 def show_recovery_codes_view(request):
@@ -72,7 +72,7 @@ def show_recovery_codes_view(request):
         # Jika tidak ada kode di session, berarti user mencoba akses langsung, redirect ke login
         return redirect("booking:login")
 
-    return render(request, "booking/recovery_codes.html", {"codes": codes})
+    return render(request, "accounts/recovery_codes.html", {"codes": codes})
 
 
 from django.views.decorators.http import require_POST
@@ -123,7 +123,7 @@ def login_view(request):
     else:
         form = LoginForm()
 
-    return render(request, "booking/login.html", {"form": form})
+    return render(request, "accounts/login.html", {"form": form})
 
 
 @ratelimit(key='ip', rate='5/m', method=['POST'], block=True)
@@ -166,7 +166,7 @@ def login_recovery_view(request):
         # Jika gagal
         messages.error(request, "Username/Email atau Kode Pemulihan tidak valid.")
 
-    return render(request, "booking/login_recovery.html")
+    return render(request, "accounts/login_recovery.html")
 
 
 @login_required
