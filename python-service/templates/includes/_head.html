@@ -1,0 +1,172 @@
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- Primary Meta Tags -->
+    <title>{% block title %}Javahade — Platform Booking & Live Streaming Eksklusif{% endblock %}</title>
+    <meta name="title" content="{% block meta_title %}Javahade — Platform Booking & Live Streaming Eksklusif{% endblock %}" />
+    <meta name="description" content="{% block meta_description %}Javahade adalah platform premium untuk booking ruangan, sesi privat bersama Host eksklusif, dan interaksi live streaming interaktif. Dapatkan pengalaman interaksi kreator terbaik di Javahade.{% endblock %}" />
+    <meta name="keywords" content="{% block meta_keywords %}booking ruangan, host eksklusif, live streaming, javahade booking, talent eksklusif, sewa ruangan, streaming interaktif, kreator konten, saweran{% endblock %}" />
+    <meta name="author" content="Javahade Platform" />
+    <meta name="robots" content="{% block meta_robots %}index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1{% endblock %}" />
+    <meta name="language" content="Indonesian" />
+
+    <!-- Canonical URL -->
+    <link rel="canonical" href="{% block canonical_url %}{{ request.build_absolute_uri }}{% endblock %}" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="{% block og_type %}website{% endblock %}" />
+    <meta property="og:url" content="{% block og_url %}{{ request.build_absolute_uri|default:'https://javahade.com/' }}{% endblock %}" />
+    <meta property="og:title" content="{% block og_title %}Javahade — Platform Booking & Live Streaming Eksklusif{% endblock %}" />
+    <meta property="og:description" content="{% block og_description %}Platform premium untuk booking ruangan, sesi privat bersama Host eksklusif, dan interaksi live streaming interaktif.{% endblock %}" />
+    <meta property="og:image" content="{% block og_image %}https://images.unsplash.com/photo-1593642632823-8f785ba67e45?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80{% endblock %}" />
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image" />
+    <meta property="twitter:url" content="{% block twitter_url %}{{ request.build_absolute_uri|default:'https://javahade.com/' }}{% endblock %}" />
+    <meta property="twitter:title" content="{% block twitter_title %}Javahade — Platform Booking & Live Streaming Eksklusif{% endblock %}" />
+    <meta property="twitter:description" content="{% block twitter_description %}Platform premium untuk booking ruangan, sesi privat bersama Host eksklusif, dan interaksi live streaming interaktif.{% endblock %}" />
+    <meta property="twitter:image" content="{% block twitter_image %}https://images.unsplash.com/photo-1593642632823-8f785ba67e45?ixlib=rb-1.2.1&auto=format&fit=crop&w=1200&q=80{% endblock %}" />
+
+    <!-- JSON-LD Structured Data untuk Google Rich Snippets -->
+    {% block json_ld %}
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Javahade",
+      "alternateName": "Javahade Booking",
+      "url": "https://javahade.com",
+      "description": "Platform premium untuk booking ruangan, sesi privat bersama Host eksklusif, dan interaksi live streaming interaktif.",
+      "potentialAction": {
+        "@type": "SearchAction",
+        "target": "https://javahade.com/search?q={search_term_string}",
+        "query-input": "required name=search_term_string"
+      }
+    }
+    </script>
+    {% endblock %}
+
+    <!-- Tailwind CSS via CDN (Play CDN untuk development) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "system-ui", "sans-serif"],
+            },
+            colors: {
+              brand: {
+                50: "#eef2ff",
+                100: "#e0e7ff",
+                200: "#c7d2fe",
+                300: "#a5b4fc",
+                400: "#818cf8",
+                500: "#6366f1",
+                600: "#4f46e5",
+                700: "#4338ca",
+                800: "#3730a3",
+                900: "#312e81",
+              },
+            },
+            animation: {
+              "fade-in": "fadeIn 0.5s ease-out",
+              "slide-up": "slideUp 0.4s ease-out",
+              "pulse-slow": "pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+            },
+            keyframes: {
+              fadeIn: {
+                "0%": { opacity: "0" },
+                "100%": { opacity: "1" },
+              },
+              slideUp: {
+                "0%": { opacity: "0", transform: "translateY(20px)" },
+                "100%": { opacity: "1", transform: "translateY(0)" },
+              },
+            },
+          },
+        },
+      };
+    </script>
+
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Alpine.js -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
+    <!-- DOMPurify untuk Keamanan Anti-XSS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+
+    <style>
+      /* Glassmorphism utility */
+      .glass {
+        background: rgba(17, 24, 39, 0.7);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .glass-light {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      /* Gradient text */
+      .gradient-text {
+        background: linear-gradient(135deg, #818cf8, #c084fc, #f472b6);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      /* Scrollbar kustom */
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+      ::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.1);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: rgba(99, 102, 241, 0.4);
+        border-radius: 3px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.6);
+      }
+      /* Animasi hover card */
+      .card-hover {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      .card-hover:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 40px rgba(99, 102, 241, 0.15);
+      }
+      /* Toast notification */
+      .toast-enter {
+        animation: slideUp 0.4s ease-out;
+      }
+
+      /* Sembunyikan Header Google Translate Asli */
+      .skiptranslate iframe,
+      .goog-te-banner-frame {
+        display: none !important;
+      }
+      body {
+        top: 0px !important;
+      }
+      #google_translate_element {
+        display: none !important;
+      }
+    </style>
+
+    {% block extra_head %}{% endblock %}
+  </head>

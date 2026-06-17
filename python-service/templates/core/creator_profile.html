@@ -1,15 +1,15 @@
-{% extends "booking/base.html" %}
+{% extends 'layouts/base.html' %}
 
 {% block title %}{{ profile.display_name }} — Profil Kreator{% endblock %}
 
-{% block meta_title %}{{ profile.display_name }} — Profil Kreator Kreativa{% endblock %}
-{% block meta_description %}Lihat profil eksklusif {{ profile.display_name }} di Kreativa. Berlangganan, kirim saweran, atau jadwalkan sesi private live booking sekarang juga!{% endblock %}
+{% block meta_title %}{{ profile.display_name }} — Profil Kreator Javahade{% endblock %}
+{% block meta_description %}Lihat profil eksklusif {{ profile.display_name }} di Javahade. Berlangganan, kirim saweran, atau jadwalkan sesi private live booking sekarang juga!{% endblock %}
 {% block meta_keywords %}{% if profile.seo_tags %}{{ profile.seo_tags }}{% else %}{{ profile.display_name }}, kreator, live streaming, {{ profile.category }}, booking host{% endif %}{% endblock %}
 
-{% block og_title %}{{ profile.display_name }} — Profil Kreator Kreativa{% endblock %}
-{% block og_description %}Lihat profil eksklusif {{ profile.display_name }} di Kreativa. Berlangganan, kirim saweran, atau jadwalkan sesi private live booking sekarang juga!{% endblock %}
-{% block twitter_title %}{{ profile.display_name }} — Profil Kreator Kreativa{% endblock %}
-{% block twitter_description %}Lihat profil eksklusif {{ profile.display_name }} di Kreativa. Berlangganan, kirim saweran, atau jadwalkan sesi private live booking sekarang juga!{% endblock %}
+{% block og_title %}{{ profile.display_name }} — Profil Kreator Javahade{% endblock %}
+{% block og_description %}Lihat profil eksklusif {{ profile.display_name }} di Javahade. Berlangganan, kirim saweran, atau jadwalkan sesi private live booking sekarang juga!{% endblock %}
+{% block twitter_title %}{{ profile.display_name }} — Profil Kreator Javahade{% endblock %}
+{% block twitter_description %}Lihat profil eksklusif {{ profile.display_name }} di Javahade. Berlangganan, kirim saweran, atau jadwalkan sesi private live booking sekarang juga!{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto animate-fade-in pb-12">

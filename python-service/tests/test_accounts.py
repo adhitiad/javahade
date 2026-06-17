@@ -12,7 +12,7 @@ def test_user_registration_requires_age_18(api_client):
     url = reverse("accounts:register")
     data = {
         "username": "underage_user",
-        "email": "underage@kreativa.app",
+        "email": "underage@javahade.app",
         "password": "Password123!",
         "password_confirm": "Password123!",
         "date_of_birth": "2015-01-01" # 11 years old
@@ -27,7 +27,7 @@ def test_user_registration_success(api_client):
     url = reverse("accounts:register")
     data = {
         "username": "valid_user",
-        "email": "valid@kreativa.app",
+        "email": "valid@javahade.app",
         "password": "Password123!",
         "password_confirm": "Password123!",
         "date_of_birth": "2000-01-01" # 26 years old

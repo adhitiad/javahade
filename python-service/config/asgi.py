@@ -1,5 +1,5 @@
 """
-ASGI config for Kreativa Platform.
+ASGI config for Javahade Platform.
 """
 
 import os

@@ -1,0 +1,63 @@
+      <div
+        id="mobile-menu"
+        class="hidden md:hidden border-t border-gray-800/50"
+      >
+        <div class="px-4 py-3 space-y-1">
+          <a
+            href="{% url 'core_ui:index' %}"
+            class="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5"
+            >🏠 Beranda</a
+          >
+          
+          {% if user.gender == 'F' or user.role == 'host' or user.role == 'admin' or user.role == 'superadmin' %}
+          <a
+            href="{% url 'booking:my_bookings' %}"
+            class="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5"
+            >📋 Pesanan Privat</a
+          >
+          <a
+            href="{% url 'core_ui:chat_inbox' %}"
+            class="block px-4 py-2 rounded-lg text-sm text-gray-300 hover:bg-white/5"
+            >💬 Pesan/Chat</a
+          >
+          {% endif %}
+          
+          <a
+            href="{% url 'core_ui:user_wallet' %}"
+            class="block px-4 py-2 rounded-lg text-sm font-bold text-emerald-400 hover:bg-emerald-500/10"
+            >💰 Dompet Finansial</a
+          >
+
+          {% if user.role == 'host' %}
+          <div class="my-2 border-t border-gray-800/50"></div>
+          <a
+            href="{% url 'booking:host_bookings_list' %}"
+            class="block px-4 py-2 rounded-lg text-sm font-bold text-emerald-400 hover:bg-emerald-500/10"
+            >📥 Pesanan Masuk</a
+          >
+          <a
+            href="{% url 'booking:dashboard' %}"
+            class="block px-4 py-2 rounded-lg text-sm font-bold text-indigo-400 hover:bg-indigo-500/10"
+            >📊 Host Dashboard</a
+          >
+          {% endif %}
+
+          {% if user.role == 'admin' or user.role == 'superadmin' %}
+          <div class="my-2 border-t border-gray-800/50"></div>
+          <a
+            href="{% url 'core_ui:admin_dashboard' %}"
+            class="block px-4 py-2 rounded-lg text-sm font-bold text-red-400 hover:bg-red-500/10"
+            >🛠️ Admin Dashboard</a
+          >
+          {% endif %}
+
+          {% if user.gender == 'F' or user.role == 'host' or user.role == 'admin' or user.role == 'superadmin' %}
+          <div class="my-2 border-t border-gray-800/50"></div>
+          <a
+            href="{% url 'streaming_ui:list' %}"
+            class="block px-4 py-2 rounded-lg text-sm text-red-300 hover:bg-red-500/10 font-bold"
+            >🎥 Live Streaming</a
+          >
+          {% endif %}
+        </div>
+      </div>

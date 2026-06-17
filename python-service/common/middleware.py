@@ -1,5 +1,5 @@
 """
-Custom middleware for the Kreativa API.
+Custom middleware for the Javahade API.
 """
 
 import json

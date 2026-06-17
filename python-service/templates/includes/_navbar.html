@@ -1,0 +1,174 @@
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+          <!-- Logo -->
+          <a
+            href="{% url 'booking:dashboard' %}"
+            class="flex items-center gap-3 group"
+          >
+            <div
+              class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-shadow"
+            >
+              <svg
+                class="w-5 h-5 text-white"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                />
+              </svg>
+            </div>
+            <span class="text-lg font-bold gradient-text"
+              >Javahade Booking</span
+            >
+          </a>
+
+          <!-- Nav Links -->
+          <div class="hidden md:flex items-center gap-1">
+            <a
+              href="{% url 'core_ui:index' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 {% if request.resolver_match.url_name == 'index' %}text-white bg-white/10{% endif %}"
+            >
+              🏠 Beranda
+            </a>
+            {% if user.gender == 'F' or user.role == 'host' or user.role == 'admin' or user.role == 'superadmin' %}
+            <a
+              href="{% url 'booking:my_bookings' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 {% if request.resolver_match.url_name == 'my_bookings' %}text-white bg-white/10{% endif %}"
+            >
+              📋 Pesanan Privat
+            </a>
+            <a
+              href="{% url 'core_ui:chat_inbox' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 {% if request.resolver_match.url_name == 'chat_inbox' %}text-white bg-white/10{% endif %}"
+            >
+              💬 Pesan/Chat
+            </a>
+            {% endif %}
+            
+            <a
+              href="{% url 'core_ui:user_wallet' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 {% if request.resolver_match.url_name == 'user_wallet' %}text-white bg-white/10{% endif %}"
+            >
+              💳 Dompet
+            </a>
+            
+            {% if user.role == 'host' %}
+            <a
+              href="{% url 'booking:host_bookings_list' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 transition-all duration-200 {% if request.resolver_match.url_name == 'host_bookings_list' %}text-emerald-300 bg-emerald-500/20{% endif %}"
+            >
+              📥 Pesanan Masuk
+            </a>
+            <a
+              href="{% url 'booking:dashboard' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-indigo-400 hover:text-indigo-300 hover:bg-indigo-500/10 transition-all duration-200 {% if request.resolver_match.url_name == 'dashboard' %}text-indigo-300 bg-indigo-500/20{% endif %}"
+            >
+              📊 Host Dashboard
+            </a>
+            {% endif %}
+
+            {% if user.role == 'admin' or user.role == 'superadmin' %}
+            <a
+              href="{% url 'core_ui:admin_dashboard' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200 {% if request.resolver_match.url_name == 'admin_dashboard' %}text-red-300 bg-red-500/20{% endif %}"
+            >
+              🛠️ Admin Dashboard
+            </a>
+            {% endif %}
+
+            {% if user.gender == 'F' or user.role == 'host' or user.role == 'admin' or user.role == 'superadmin' %}
+            <a
+              href="{% url 'streaming_ui:list' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-gray-300 hover:text-white hover:bg-white/5 transition-all duration-200 flex items-center gap-1"
+            >
+              <span class="relative flex h-2 w-2">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+              </span>
+              🎥 Live
+            </a>
+            {% endif %}
+          </div>
+
+          <!-- Global Search -->
+          <div class="hidden md:flex flex-1 max-w-md ml-6 mr-6">
+            <form action="{% url 'core_ui:search' %}" method="get" class="w-full relative group">
+              <input 
+                type="search" 
+                name="q" 
+                placeholder="Cari Host atau Live Stream..." 
+                class="w-full bg-white/5 border border-white/10 rounded-full py-2 pl-10 pr-4 text-sm text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                required
+              >
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-4 w-4 text-gray-400 group-focus-within:text-purple-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+            </form>
+          </div>
+
+          <!-- User Menu -->
+          <div class="flex items-center gap-4">
+            <div
+              class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full glass-light"
+            >
+              <div
+                class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-xs font-bold text-white"
+              >
+                {{ user.username|first|upper }}
+              </div>
+              <span class="text-sm font-medium text-gray-300"
+                >{{ user.username }}</span
+              >
+            </div>
+            
+            {% if user.role == 'user'  %}
+            <a
+              href="{% url 'booking:edit_profile' %}"
+              class="hidden md:block px-3 py-2 rounded-lg text-sm font-medium text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/10 transition-all duration-200"
+            >
+              👤 Profil
+            </a>
+            <a
+              href="{% url 'booking:settings' %}"
+              class="hidden md:block px-3 py-2 rounded-lg text-sm font-medium text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 transition-all duration-200"
+            >
+              ⚙️ Pengaturan
+            </a>
+            {% endif %}
+
+            <a
+              href="{% url 'booking:logout' %}"
+              class="px-4 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200"
+            >
+              Logout
+            </a>
+
+            <!-- Mobile menu button -->
+            <button
+              id="mobile-menu-btn"
+              class="md:hidden p-2 rounded-lg text-gray-400 hover:text-white hover:bg-white/5"
+            >
+              <svg
+                class="w-6 h-6"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  stroke-width="2"
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>

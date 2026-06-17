@@ -100,7 +100,7 @@ def stream_watch(request, stream_id):
     import base64
     from django.conf import settings
     
-    secret_key = getattr(settings, 'OME_WEBHOOK_SECRET', 'kreativa-super-secret-ome-key')
+    secret_key = getattr(settings, 'OME_WEBHOOK_SECRET', 'javahade-super-secret-ome-key')
     payload = f"{stream.id}:{request.user.id}:{int(timezone.now().timestamp()) + 3600}" # Berlaku 1 jam
     signature = hmac.new(secret_key.encode(), payload.encode(), hashlib.sha256).digest()
     token = base64.urlsafe_b64encode(signature).decode().rstrip('=')

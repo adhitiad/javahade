@@ -3,10 +3,10 @@ import getpass
 from django.core.management.base import BaseCommand
 
 class Command(BaseCommand):
-    help = 'Setup PostgreSQL Kreativa'
+    help = 'Setup PostgreSQL Javahade'
 
     def handle(self, *args, **kwargs):
-        self.stdout.write("=== Setup PostgreSQL Kreativa ===")
+        self.stdout.write("=== Setup PostgreSQL Javahade ===")
         password = getpass.getpass("Masukkan kata sandi untuk akun 'postgres' Anda: ")
         
         try:
@@ -21,23 +21,23 @@ class Command(BaseCommand):
             self.stdout.write(self.style.SUCCESS("\n[OK] Berhasil terhubung ke PostgreSQL!"))
             
             with conn.cursor() as cur:
-                self.stdout.write("Membuat akun 'kreativa'...")
+                self.stdout.write("Membuat akun 'javahade'...")
                 try:
-                    cur.execute("CREATE USER kreativa WITH PASSWORD 'kreativa_pass';")
+                    cur.execute("CREATE USER javahade WITH PASSWORD 'javahade_pass';")
                     self.stdout.write(self.style.SUCCESS("  [OK] Akun berhasil dibuat."))
                 except psycopg.errors.DuplicateObject:
-                    self.stdout.write(self.style.WARNING("  [INFO] Akun 'kreativa' sudah ada."))
+                    self.stdout.write(self.style.WARNING("  [INFO] Akun 'javahade' sudah ada."))
                     
-                cur.execute("ALTER ROLE kreativa SET client_encoding TO 'utf8';")
-                cur.execute("ALTER ROLE kreativa SET default_transaction_isolation TO 'read committed';")
-                cur.execute("ALTER ROLE kreativa SET timezone TO 'UTC';")
+                cur.execute("ALTER ROLE javahade SET client_encoding TO 'utf8';")
+                cur.execute("ALTER ROLE javahade SET default_transaction_isolation TO 'read committed';")
+                cur.execute("ALTER ROLE javahade SET timezone TO 'UTC';")
                 
-                self.stdout.write("Membuat database 'kreativa_db'...")
+                self.stdout.write("Membuat database 'javahade_db'...")
                 try:
-                    cur.execute("CREATE DATABASE kreativa_db OWNER kreativa;")
+                    cur.execute("CREATE DATABASE javahade_db OWNER javahade;")
                     self.stdout.write(self.style.SUCCESS("  [OK] Database berhasil dibuat."))
                 except psycopg.errors.DuplicateDatabase:
-                    self.stdout.write(self.style.WARNING("  [INFO] Database 'kreativa_db' sudah ada."))
+                    self.stdout.write(self.style.WARNING("  [INFO] Database 'javahade_db' sudah ada."))
                     
             conn.close()
             self.stdout.write(self.style.SUCCESS("\n=== SETUP DATABASE SELESAI ==="))

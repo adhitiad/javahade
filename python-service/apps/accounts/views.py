@@ -139,7 +139,7 @@ class UserDeleteView(APIView):
         # Data Scrubbing (Anonimisasi) untuk menjaga integritas transaksi/Saga
         scrubbed_id = f"deleted_{uuid.uuid4().hex[:16]}"
         user.username = scrubbed_id
-        user.email = f"{scrubbed_id}@kreativa.app"
+        user.email = f"{scrubbed_id}@javahade.app"
         user.bio = ""
         user.first_name = ""
         user.last_name = ""

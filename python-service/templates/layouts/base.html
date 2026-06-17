@@ -1,0 +1,243 @@
+{% load static %}
+<!doctype html>
+<html lang="id" class="scroll-smooth">
+  <head>
+    {% include "includes/_head.html" %}
+
+  <body class="bg-gray-950 text-gray-100 font-sans min-h-screen flex flex-col">
+    <!-- ===== NSFW WARNING MODAL ===== -->
+    <div id="nsfw-modal" class="fixed inset-0 z-[9999] hidden flex items-center justify-center bg-black/80 backdrop-blur-sm">
+      <div class="glass border border-red-500/30 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl shadow-red-500/20 text-center animate-slide-up">
+        <h2 class="text-2xl font-bold text-red-500 mb-4">⚠️ Peringatan Konten Dewasa</h2>
+        
+        <img src="https://media.giphy.com/media/v1.Y2lkPWVjZjA1ZTQ3cmlheDQ2ajExY205cDZ2Zmk1bjZsb2FpdWZ3dXdoOGkxaW54enY0NiZlcD12MV9zdGlja2Vyc19zZWFyY2gmY3Q9cw/hftgUQWM5d1WM5XGgM/giphy.gif" alt="Warning GIF" class="w-full h-auto rounded-lg mb-4 border border-white/10" />
+        
+        <p class="text-gray-200 mb-4 text-sm leading-relaxed">
+          Situs ini mengandung <strong>Konten Pornografi (18+)</strong>.
+          <br><br>
+          <span class="text-xs text-red-400 font-medium">Harap diperhatikan bahwa situs ini tidak menerima konten LGBT, terkecuali Lesbian (Girls-Love).</span>
+        </p>
+        
+        <div class="flex flex-col gap-3 mt-6">
+          <button id="accept-nsfw-btn" class="w-full py-3 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all shadow-lg shadow-red-600/30">
+            Saya Berusia 18+ & Mengerti
+          </button>
+          <a href="https://www.google.com" class="w-full py-3 bg-gray-800 hover:bg-gray-700 text-gray-300 font-medium rounded-xl transition-all">
+            Keluar dari Situs
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        const modal = document.getElementById('nsfw-modal');
+        const acceptBtn = document.getElementById('accept-nsfw-btn');
+        
+        if (!localStorage.getItem('nsfw_warning_accepted')) {
+          modal.classList.remove('hidden');
+          document.body.style.overflow = 'hidden';
+        }
+        
+        if(acceptBtn) {
+          acceptBtn.addEventListener('click', () => {
+            localStorage.setItem('nsfw_warning_accepted', 'true');
+            modal.classList.add('hidden');
+            document.body.style.overflow = '';
+          });
+        }
+      });
+    </script>
+
+    <!-- ===== NAVBAR ===== -->
+    {% if user.is_authenticated %}
+    <nav class="glass sticky top-0 z-50 border-b border-gray-800/50">
+      {% include "includes/_navbar.html" %}
+
+      <!-- Mobile menu -->
+      {% include "includes/_mobile_menu.html" %}
+    </nav>
+    {% endif %}
+
+    <!-- ===== TOAST MESSAGES ===== -->
+    {% if messages %}
+    <div
+      class="fixed top-20 right-4 z-50 space-y-3 max-w-md"
+      id="toast-container"
+    >
+      {% for message in messages %}
+      <div
+        class="toast-enter glass rounded-xl px-5 py-4 shadow-2xl border {% if message.tags == 'success' %}border-emerald-500/30{% elif message.tags == 'error' %}border-red-500/30{% elif message.tags == 'warning' %}border-amber-500/30{% else %}border-blue-500/30{% endif %}"
+        onclick="this.style.display = 'none'"
+      >
+        <div class="flex items-start gap-3">
+          <span class="text-lg mt-0.5">
+            {% if message.tags == 'success' %}✅{% elif message.tags == 'error'
+            %}❌{% elif message.tags == 'warning' %}⚠️{% else %}ℹ️{% endif %}
+          </span>
+          <p class="text-sm text-gray-200 leading-relaxed">{{ message }}</p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <script>
+      // Auto-hide toast setelah 5 detik
+      setTimeout(() => {
+        const container = document.getElementById("toast-container");
+        if (container) container.style.display = "none";
+      }, 5000);
+    </script>
+    {% endif %}
+
+    <!-- ===== KONTEN UTAMA ===== -->
+    <main class="flex-1">{% block content %}{% endblock %}</main>
+
+    <!-- ===== FOOTER ===== -->
+    {% if user.is_authenticated %}
+    <footer class="border-t border-gray-800/50 mt-auto">
+      <div class="max-w-7xl mx-auto px-4 py-6">
+        <div
+          class="flex flex-col sm:flex-row items-center justify-between gap-4"
+        >
+          <p class="text-sm text-gray-500">
+            &copy; 2026 Javahade Booking. Sistem Pemesanan Ruangan.
+          </p>
+          <div class="flex items-center gap-4 text-sm text-gray-500">
+            <span class="flex items-center gap-1.5">
+              <span
+                class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"
+              ></span>
+              Django {{ django_version|default:"6.0" }}
+            </span>
+            <span>•</span>
+            <span>Go Chat Service</span>
+          </div>
+        </div>
+      </div>
+    </footer>
+    {% endif %}
+
+    <!-- Mobile menu toggle -->
+    <script>
+      const menuBtn = document.getElementById("mobile-menu-btn");
+      const mobileMenu = document.getElementById("mobile-menu");
+      if (menuBtn && mobileMenu) {
+        menuBtn.addEventListener("click", () => {
+          mobileMenu.classList.toggle("hidden");
+        });
+      }
+    </script>
+
+    <!-- ===== GOOGLE TRANSLATE MULTI-LANGUAGE & CURRENCY CONVERTER ===== -->
+    <div id="google_translate_element" style="display:none;"></div>
+    <script type="text/javascript">
+      function googleTranslateElementInit() {
+        new google.translate.TranslateElement({
+          pageLanguage: 'id',
+          includedLanguages: 'id,en,zh-CN,ja,ms,my,th,pt',
+          autoDisplay: false
+        }, 'google_translate_element');
+      }
+
+      function changeLanguage(langCode) {
+        document.cookie = `googtrans=/id/${langCode}; path=/;`;
+        document.cookie = `googtrans=/id/${langCode}; domain=.${location.hostname}; path=/;`;
+        window.location.reload();
+      }
+
+      function toggleLangMenu() {
+        document.getElementById('lang-dropdown').classList.toggle('hidden');
+      }
+
+      // Global Dynamic Localization (Currency + IP Lang Auto-detect)
+      const locConfig = {
+          'ID': { curr: 'IDR', sym: 'Rp', rate: 16000, lang: 'id' },
+          'MY': { curr: 'MYR', sym: 'RM', rate: 4.7, lang: 'ms' },
+          'SG': { curr: 'SGD', sym: 'S$', rate: 1.35, lang: 'en' },
+          'JP': { curr: 'JPY', sym: '¥', rate: 155, lang: 'ja' },
+          'TH': { curr: 'THB', sym: '฿', rate: 36, lang: 'th' },
+          'DEFAULT': { curr: 'USD', sym: '$', rate: 1, lang: 'en' }
+      };
+
+      let userLoc = locConfig['DEFAULT'];
+
+      function formatPrice(usdVal) {
+          const localVal = (usdVal * userLoc.rate);
+          if(userLoc.curr === 'IDR') return userLoc.sym + localVal.toLocaleString('id-ID');
+          if(userLoc.curr === 'JPY') return userLoc.sym + Math.round(localVal).toLocaleString();
+          return userLoc.sym + localVal.toFixed(2);
+      }
+
+      document.addEventListener("DOMContentLoaded", async () => {
+          try {
+              // 1. Fetch IP Geolocation
+              const geoRes = await fetch('https://ipapi.co/json/');
+              const geoData = await geoRes.json();
+              
+              if(geoData.country_code) {
+                  userLoc = locConfig[geoData.country_code] || locConfig['DEFAULT'];
+              }
+
+              // Auto-translate if first time visit
+              if (!document.cookie.includes('googtrans=') && userLoc.lang !== 'id') {
+                  changeLanguage(userLoc.lang);
+                  return; // Reloads the page
+              }
+
+              // 2. Fetch Dynamic Exchange Rates
+              try {
+                  const rateRes = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+                  const rateData = await rateRes.json();
+                  if (rateData && rateData.rates && rateData.rates[userLoc.curr]) {
+                      userLoc.rate = rateData.rates[userLoc.curr];
+                  }
+              } catch(rateErr) {
+                  console.warn("Dynamic rates failed", rateErr);
+              }
+              
+              // 3. Convert Prices globally
+              const convertDOMPrices = (node) => {
+                  if (node.nodeType === 3) {
+                      let text = node.nodeValue;
+                      const priceRegex = /\$(\d+\.\d{2})/g;
+                      if (priceRegex.test(text)) {
+                          node.nodeValue = text.replace(priceRegex, (match, p1) => {
+                              return formatPrice(parseFloat(p1));
+                          });
+                      }
+                  } else if (node.nodeType === 1 && node.nodeName !== 'SCRIPT' && node.nodeName !== 'STYLE') {
+                      for (let i = 0; i < node.childNodes.length; i++) {
+                          convertDOMPrices(node.childNodes[i]);
+                      }
+                  }
+              };
+              convertDOMPrices(document.body);
+
+          } catch(e) { console.warn("Localization init failed", e); }
+      });
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
+
+    <!-- Floating Language Selector -->
+    <div class="fixed bottom-6 left-6 z-[100] translate-ignore" translate="no">
+      <div class="relative">
+        <button onclick="toggleLangMenu()" class="glass-light w-12 h-12 rounded-full flex items-center justify-center text-xl hover:bg-white/10 transition-colors shadow-lg border border-white/20">
+          🌐
+        </button>
+        <!-- Dropdown Menu -->
+        <div id="lang-dropdown" class="hidden absolute bottom-14 left-0 w-48 glass rounded-2xl border border-white/10 shadow-2xl py-2 overflow-hidden flex flex-col">
+          <button onclick="changeLanguage('id')" class="px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 hover:text-white flex items-center gap-2">🇮🇩 Indonesia</button>
+          <button onclick="changeLanguage('en')" class="px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 hover:text-white flex items-center gap-2">🇬🇧 English</button>
+          <button onclick="changeLanguage('zh-CN')" class="px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 hover:text-white flex items-center gap-2">🇨🇳 Mandarin</button>
+          <button onclick="changeLanguage('ja')" class="px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 hover:text-white flex items-center gap-2">🇯🇵 Japanese</button>
+          <button onclick="changeLanguage('ms')" class="px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 hover:text-white flex items-center gap-2">🇲🇾 Malay</button>
+          <button onclick="changeLanguage('my')" class="px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 hover:text-white flex items-center gap-2">🇲🇲 Myanmar</button>
+          <button onclick="changeLanguage('th')" class="px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 hover:text-white flex items-center gap-2">🇹🇭 Thai</button>
+          <button onclick="changeLanguage('pt')" class="px-4 py-2 text-left text-sm text-gray-200 hover:bg-white/10 hover:text-white flex items-center gap-2">🇧🇷 Portuguese</button>
+        </div>
+      </div>
+    </div>
+
+    {% block extra_js %}{% endblock %}
+  </body>
+</html>

@@ -1,1 +1,1 @@
-# Kreativa Django Config Package
+# Javahade Django Config Package

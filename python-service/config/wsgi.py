@@ -1,5 +1,5 @@
 """
-WSGI config for Kreativa Platform.
+WSGI config for Javahade Platform.
 """
 
 import os

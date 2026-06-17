@@ -1,5 +1,5 @@
 /**
- * Kreativa Booking — WebSocket Chat Client
+ * Javahade Booking — WebSocket Chat Client
  *
  * Fitur:
  * - Koneksi WebSocket ke Go chat-service

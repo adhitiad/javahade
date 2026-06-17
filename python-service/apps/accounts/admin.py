@@ -14,7 +14,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ["role", "is_verified", "is_active"]
     search_fields = ["username", "email"]
     fieldsets = BaseUserAdmin.fieldsets + (  # type: ignore
-        ("Kreativa", {"fields": ("avatar", "bio", "role", "is_verified", "date_of_birth")}),
+        ("Javahade", {"fields": ("avatar", "bio", "role", "is_verified", "date_of_birth")}),
     )
 
 

@@ -1,7 +1,7 @@
-{% extends "booking/base.html" %}
+{% extends 'layouts/base.html' %}
 {% load static %}
 
-{% block title %}Watch Live — {{ stream.title }} — Kreativa{% endblock %}
+{% block title %}Watch Live — {{ stream.title }} — Javahade{% endblock %}
 
 {% block content %}
 <div class="h-[calc(100vh-80px)] max-h-screen px-4 py-4 sm:px-6 animate-fade-in flex flex-col">
@@ -384,7 +384,7 @@ function spawnReaction(emoji) {
 
 // ─── WebRTC Streaming (OME) dengan CDN & Keamanan ────────────────────────────────
 const SIGNED_TOKEN = "{{ signed_token }}";
-const CDN_DOMAIN = "live.kreativa.app"; // Simulasi CDN
+const CDN_DOMAIN = "live.javahade.app"; // Simulasi CDN
 // const OME_WS_URL = `ws://localhost:3333/app/${STREAM_ID}`; // URL Lama
 const OME_WS_URL_BASE = `wss://${CDN_DOMAIN}/app/${STREAM_ID}`;
 
@@ -435,7 +435,7 @@ const OME_WS_URL_BASE = `wss://${CDN_DOMAIN}/app/${STREAM_ID}`;
         });
         
         // Start publishing to OME (Host uses bypass/raw stream directly to origin)
-        liveKit.startRecord(`wss://origin.kreativa.app/app/${STREAM_ID}?token=${SIGNED_TOKEN}`);
+        liveKit.startRecord(`wss://origin.javahade.app/app/${STREAM_ID}?token=${SIGNED_TOKEN}`);
         
     } catch (err) {
         console.error("Gagal mengakses kamera:", err);

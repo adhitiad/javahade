@@ -1,5 +1,5 @@
 """
-Standard pagination classes for the Kreativa API.
+Standard pagination classes for the Javahade API.
 """
 
 from rest_framework.pagination import PageNumberPagination

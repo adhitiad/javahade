@@ -1,6 +1,6 @@
-{% extends "booking/base.html" %}
+{% extends 'layouts/base.html' %}
 
-{% block title %}Top-Up Saldo Dompet — Kreativa{% endblock %}
+{% block title %}Top-Up Saldo Dompet — Javahade{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto px-4 py-12">
@@ -257,7 +257,7 @@
             const blobUrl = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = blobUrl;
-            link.download = 'Kreativa_Crypto_Wallet_QR.png';
+            link.download = 'Javahade_Crypto_Wallet_QR.png';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);

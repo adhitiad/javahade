@@ -1,5 +1,5 @@
 """
-Kreativa Platform — URL Configuration
+Javahade Platform — URL Configuration
 """
 
 from django.contrib import admin
