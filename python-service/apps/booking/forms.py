@@ -1,5 +1,5 @@
 """
-Form Booking — Validasi input untuk booking, registrasi, dan login.
+Form Booking â€” Validasi input untuk booking, registrasi, dan login.
 Semua input di-sanitasi menggunakan bleach untuk mencegah XSS.
 """
 
@@ -22,7 +22,7 @@ User = get_user_model()
 
 
 def sanitize_input(value):
-    """Sanitasi input teks — hapus tag HTML berbahaya."""
+    """Sanitasi input teks â€” hapus tag HTML berbahaya."""
     if not isinstance(value, str):
         return value
     if HAS_BLEACH:
@@ -322,3 +322,86 @@ class LoginForm(AuthenticationForm):
             }
         ),
     )
+
+
+
+class ProfileEditForm(forms.ModelForm):
+    """Form untuk mengubah profil user."""
+    avatar = forms.ImageField(
+        required=False,
+        widget=forms.FileInput(
+            attrs={
+                "class": "block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-500/10 file:text-indigo-400 hover:file:bg-indigo-500/20"
+            }
+        ),
+        label="Foto Profil",
+    )
+    
+    bio = forms.CharField(
+        required=False,
+        widget=forms.Textarea(
+            attrs={
+                "class": "w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200 resize-none",
+                "rows": 3,
+            }
+        ),
+        label="Bio",
+    )
+    
+    gender = forms.ChoiceField(
+        choices=User.Gender.choices,
+        required=False,
+        widget=forms.Select(
+            attrs={
+                "class": "w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            }
+        ),
+        label="Jenis Kelamin",
+    )
+    
+    date_of_birth = forms.DateField(
+        required=False,
+        widget=forms.DateInput(
+            attrs={
+                "type": "date",
+                "class": "w-full px-4 py-3 bg-gray-700/50 border border-gray-600 rounded-xl text-white focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            }
+        ),
+        label="Tanggal Lahir",
+    )
+
+    class Meta:
+        model = User
+        fields = ["avatar", "bio", "gender", "date_of_birth"]
+
+    def clean_bio(self):
+        bio = self.cleaned_data.get("bio", "")
+        return sanitize_input(bio)
+
+
+class SettingsForm(forms.ModelForm):
+    """Form untuk pengaturan preferensi dan notifikasi."""
+    email_notifications = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(
+            attrs={
+                "class": "w-5 h-5 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500 focus:ring-2"
+            }
+        ),
+        label="Notifikasi Email",
+    )
+    
+    push_notifications = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(
+            attrs={
+                "class": "w-5 h-5 text-indigo-600 bg-gray-700 border-gray-600 rounded focus:ring-indigo-500 focus:ring-2"
+            }
+        ),
+        label="Notifikasi Push",
+    )
+
+    class Meta:
+        model = User
+        fields = ["email_notifications", "push_notifications"]
+

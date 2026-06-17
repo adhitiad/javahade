@@ -39,7 +39,7 @@ class PostFeedView(generics.ListAPIView):
         qs = Post.objects.filter(
             is_published=True,
             scheduled_at__isnull=True,
-        ).select_related("creator")
+        ).select_related("creator").prefetch_related("likes", "comments")
 
         user = self.request.user
         if user.is_authenticated:
@@ -108,23 +108,22 @@ class PostLikeToggleView(APIView):
 
         like, created = Like.objects.get_or_create(post=post, user=request.user)
 
+        from django.db.models import F
         if created:
-            post.like_count += 1
-            post.save(update_fields=['like_count'])
+            Post.objects.filter(id=post.id).update(like_count=F('like_count') + 1)
             liked = True
         else:
             if like.is_unlike:
                 like.is_unlike = False
                 like.save(update_fields=['is_unlike'])
-                post.unlike_count = max(0, post.unlike_count - 1)
-                post.like_count += 1
-                post.save(update_fields=['like_count', 'unlike_count'])
+                Post.objects.filter(id=post.id).update(unlike_count=F('unlike_count') - 1, like_count=F('like_count') + 1)
                 liked = True
             else:
                 like.delete()
-                post.like_count = max(0, post.like_count - 1)
-                post.save(update_fields=['like_count'])
+                Post.objects.filter(id=post.id).update(like_count=F('like_count') - 1)
                 liked = False
+                
+        post.refresh_from_db()
                 
         from .services import recalculate_quality_score
         recalculate_quality_score(post)
@@ -152,25 +151,24 @@ class PostUnlikeToggleView(APIView):
 
         like, created = Like.objects.get_or_create(post=post, user=request.user)
 
+        from django.db.models import F
         if created:
             like.is_unlike = True
             like.save(update_fields=['is_unlike'])
-            post.unlike_count += 1
-            post.save(update_fields=['unlike_count'])
+            Post.objects.filter(id=post.id).update(unlike_count=F('unlike_count') + 1)
             unliked = True
         else:
             if not like.is_unlike:
                 like.is_unlike = True
                 like.save(update_fields=['is_unlike'])
-                post.like_count = max(0, post.like_count - 1)
-                post.unlike_count += 1
-                post.save(update_fields=['like_count', 'unlike_count'])
+                Post.objects.filter(id=post.id).update(like_count=F('like_count') - 1, unlike_count=F('unlike_count') + 1)
                 unliked = True
             else:
                 like.delete()
-                post.unlike_count = max(0, post.unlike_count - 1)
-                post.save(update_fields=['unlike_count'])
+                Post.objects.filter(id=post.id).update(unlike_count=F('unlike_count') - 1)
                 unliked = False
+                
+        post.refresh_from_db()
                 
         from .services import recalculate_quality_score
         recalculate_quality_score(post)

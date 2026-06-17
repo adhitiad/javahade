@@ -25,13 +25,6 @@ class ReportCreateView(APIView):
     """POST /api/v1/moderation/reports/ — File a report."""
     permission_classes = [permissions.IsAuthenticated]
 
-    CONTENT_TYPE_MAP = {
-        "post": ("content", "post"),
-        "comment": ("content", "comment"),
-        "user": ("accounts", "user"),
-        "story": ("content", "story"),
-    }
-
     def post(self, request):
         serializer = CreateReportSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -39,14 +32,13 @@ class ReportCreateView(APIView):
         data = cast(dict, serializer.validated_data)
 
         ct_key = data["content_type"].lower()
-        if ct_key not in self.CONTENT_TYPE_MAP:
+        ct = ContentType.objects.filter(model=ct_key).first()
+        
+        if not ct:
             return Response(
-                {"detail": f"Invalid content_type. Must be one of: {list(self.CONTENT_TYPE_MAP.keys())}"},
+                {"detail": f"Invalid content_type. Unknown model: {ct_key}"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-
-        app_label, model = self.CONTENT_TYPE_MAP[ct_key]
-        ct = ContentType.objects.get(app_label=app_label, model=model)
 
         report = Report.objects.create(
             reporter=request.user,
@@ -74,13 +66,23 @@ class ModerationCheckView(APIView):
     Internal API endpoint for Go service to check message content before broadcasting.
     Expects {"text": "message content"}
     """
-    permission_classes = [permissions.AllowAny] # In production, restrict to localhost/internal IPs
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        from django.conf import settings
+        
+        # Validasi akses internal dari Go service
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+        internal_token = getattr(settings, "INTERNAL_SERVICE_TOKEN", "javahade-internal-secret")
+        
+        if auth_header != f"Bearer {internal_token}":
+            return Response({"error": "Unauthorized"}, status=status.HTTP_401_UNAUTHORIZED)
+            
         text = request.data.get("text", "")
         if not text:
             return Response({"status": "ok"}, status=status.HTTP_200_OK)
             
+        # pyrefly: ignore [missing-import]
         from apps.moderation.services import ContentModerationService
         from django.core.exceptions import ValidationError
         

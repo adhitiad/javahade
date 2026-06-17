@@ -352,6 +352,22 @@
                 >{{ user.username }}</span
               >
             </div>
+            
+            {% if user.role == 'user'  %}
+            <a
+              href="{% url 'booking:edit_profile' %}"
+              class="hidden md:block px-3 py-2 rounded-lg text-sm font-medium text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/10 transition-all duration-200"
+            >
+              👤 Profil
+            </a>
+            <a
+              href="{% url 'booking:settings' %}"
+              class="hidden md:block px-3 py-2 rounded-lg text-sm font-medium text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 transition-all duration-200"
+            >
+              ⚙️ Pengaturan
+            </a>
+            {% endif %}
+
             <a
               href="{% url 'booking:logout' %}"
               class="px-4 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200"

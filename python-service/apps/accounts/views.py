@@ -60,9 +60,12 @@ class CustomCookieLoginView(TokenObtainPairView):
     """
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
-        if response.status_code == 200:
-            access_token = response.data.get('access')
-            refresh_token = response.data.get('refresh')
+        if response.status_code == 200 and isinstance(response.data, dict):
+            from django.contrib.auth import logout
+            logout(request._request)  # Membersihkan session lama (mencegah Session Fixation)
+            
+            access_token = str(response.data.get('access', ''))
+            refresh_token = str(response.data.get('refresh', ''))
             
             # Hapus token dari JSON body
             del response.data['access']

@@ -196,7 +196,8 @@
     const walletBalanceDisplay = document.getElementById("wallet-balance-display");
     
     // Inject user balances from Django
-    const userBalances = {{ user_balances|safe }};
+    {{ user_balances|json_script:"user-balances-data" }}
+    const userBalances = JSON.parse(document.getElementById('user-balances-data').textContent);
     let currentCurrency = 'IDR'; // fallback default
     
     // Geo-Currency Variables

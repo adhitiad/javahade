@@ -77,7 +77,7 @@ go mod tidy
 
 # Menjalankan spesifik service, misal chat-service:
 cd chat-service
-go run cmd/server/main.go
+go run main.go
 ```
 
 ### 3. Nginx Reverse Proxy

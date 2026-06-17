@@ -454,6 +454,37 @@ class HostBooking(models.Model):
             ).exists()
         return False
 
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        from datetime import timedelta
+        
+        errors = {}
+        
+        if self.rate and self.start_datetime:
+            duration_map = {
+                "30m": timedelta(minutes=30), "1h": timedelta(hours=1), "3h": timedelta(hours=3),
+                "6h": timedelta(hours=6), "12h": timedelta(hours=12), "24h": timedelta(hours=24),
+                "3d": timedelta(days=3), "7d": timedelta(days=7), "14d": timedelta(days=14),
+                "24d": timedelta(days=24), "30d": timedelta(days=30), "3m": timedelta(days=90),
+            }
+            dur = duration_map.get(self.rate.duration_type, timedelta(hours=1))
+            self.end_datetime = self.start_datetime + dur
+            
+        if hasattr(self, 'host_id') and self.host_id and self.start_datetime and self.end_datetime:
+            overlapping = HostBooking.objects.filter(
+                host_id=self.host_id,
+                status__in=[self.Status.PENDING, self.Status.CONFIRMED]
+            ).exclude(pk=self.pk)
+            
+            for existing in overlapping:
+                if existing.end_datetime and existing.start_datetime:
+                    if self.start_datetime < existing.end_datetime and self.end_datetime > existing.start_datetime:
+                        errors["start_datetime"] = "Jadwal ini tumpang tindih dengan pesanan lain."
+                        break
+                        
+        if errors:
+            raise ValidationError(errors)
+
     def save(self, *args, **kwargs):
         from decimal import Decimal
         from datetime import timedelta
@@ -483,7 +514,8 @@ class HostBooking(models.Model):
                 self.end_datetime = self.start_datetime + dur
                 
         if self.total_cost:
-            base_val = Decimal(str(self.total_cost))
+            from decimal import ROUND_HALF_UP
+            base_val = Decimal(str(self.total_cost)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             
             if self.is_no_show_cancelled:
                 # 25% User, 65% Host, 10% Admin
@@ -519,7 +551,14 @@ class HostBooking(models.Model):
                     self.app_tax_fee + self.service_fee + 
                     self.admin_fee + self.validation_fee + self.other_fee
                 )
-                self.net_payout = base_val - total_fees
+                self.net_payout = (base_val - total_fees).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            
+            # Pastikan semua field decimal juga dibulatkan
+            self.app_tax_fee = self.app_tax_fee.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            self.service_fee = self.service_fee.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            self.admin_fee = self.admin_fee.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            self.validation_fee = self.validation_fee.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+            self.other_fee = self.other_fee.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
             
         super().save(*args, **kwargs)
 

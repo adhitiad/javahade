@@ -40,6 +40,8 @@ urlpatterns = [
     ), name='password_reset_complete'),
     # --- Dashboard ---
     path("", views.dashboard_view, name="dashboard"),
+    path("profile/edit/", views.edit_profile_view, name="edit_profile"),
+    path("settings/", views.settings_view, name="settings"),
     # --- Ruangan ---
     path("rooms/", views.room_list_view, name="rooms"),
     # --- Booking CRUD ---

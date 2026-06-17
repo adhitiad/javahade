@@ -4,7 +4,9 @@ from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+# pyrefly: ignore [missing-import]
 from apps.accounts.models import User
+# pyrefly: ignore [missing-import]
 from apps.accounts.permissions import IsCreator
 from .models import PaymentIntent, Payout
 from .providers import get_payment_provider
@@ -40,7 +42,9 @@ class CreatePaymentView(APIView):
 
         from typing import cast
         data = cast(dict, serializer.validated_data)
-        provider = get_payment_provider("mock")
+        from django.conf import settings
+        provider_name = getattr(settings, "DEFAULT_PAYMENT_PROVIDER", "mock")
+        provider = get_payment_provider(provider_name)
         result = provider.create_payment(
             amount=float(data["amount"]),
             currency=data["currency"],
@@ -83,7 +87,7 @@ class PaymentHistoryView(generics.ListAPIView):
     serializer_class = PaymentIntentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
+    def get_queryset(self): # type: ignore
         return PaymentIntent.objects.filter(user=self.request.user)
 
 
@@ -341,7 +345,13 @@ class SendGiftAPIView(APIView):
             price = gift.price_idr
             total_charge = price + extra_fee
             
-            if user.balance_idr < total_charge:
+            from django.db.models import F
+            updated = User.objects.filter(
+                id=user.id,
+                balance_idr__gte=total_charge
+            ).update(balance_idr=F('balance_idr') - total_charge)
+            
+            if updated == 0:
                 return Response({"error": f"Saldo IDR tidak cukup. Butuh {total_charge}"}, status=400)
                 
             platform_fee = price * Decimal("0.30")
@@ -357,10 +367,8 @@ class SendGiftAPIView(APIView):
                 dividend_per_share = dividend_pool / Decimal(str(total_shares_issued))
                 for share in shares:
                     user_dividend = dividend_per_share * Decimal(str(share.shares_count))
-                    share.investor.balance_idr += user_dividend
-                    share.investor.save()
-                    share.total_dividends_earned += user_dividend
-                    share.save()
+                    User.objects.filter(id=share.investor.id).update(balance_idr=F('balance_idr') + user_dividend)
+                    CreatorShare.objects.filter(id=share.id).update(total_dividends_earned=F('total_dividends_earned') + user_dividend)
                     
                     WalletTransaction.objects.create(
                         user=share.investor,
@@ -375,11 +383,9 @@ class SendGiftAPIView(APIView):
                 dividend_pool = Decimal("0.00")
                 net_host = price - platform_fee
             
-            user.balance_idr -= total_charge
-            user.save()
+            # Saldo sender sudah dipotong via Atomic Update
             
-            receiver.balance_idr += net_host
-            receiver.save()
+            User.objects.filter(id=receiver.id).update(balance_idr=F('balance_idr') + net_host)
             
             
 

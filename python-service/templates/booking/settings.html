@@ -1,0 +1,59 @@
+{% extends 'booking/base.html' %}
+{% load static %}
+
+{% block title %}Pengaturan & Notifikasi - Kreativa{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-12">
+    <div class="glass rounded-2xl p-8 border border-gray-700/50 shadow-2xl animate-fade-in relative overflow-hidden">
+        
+        <div class="absolute top-0 left-0 -ml-16 -mt-16 w-64 h-64 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none"></div>
+
+        <div class="relative z-10">
+            <div class="text-center mb-10">
+                <h1 class="text-3xl font-extrabold text-white tracking-tight mb-3">Pengaturan <span class="text-emerald-400">Notifikasi</span></h1>
+                <p class="text-gray-400">Sesuaikan bagaimana Kreativa menghubungi Anda.</p>
+            </div>
+
+            <form method="POST" class="space-y-8">
+                {% csrf_token %}
+                
+                <div class="bg-gray-800/30 rounded-xl border border-gray-700/50 p-6 space-y-6">
+                    <h3 class="text-lg font-bold text-white mb-4 border-b border-gray-700/50 pb-2">Preferensi Komunikasi</h3>
+                    
+                    <!-- Email Notifications -->
+                    <div class="flex items-center justify-between group">
+                        <div class="flex-1">
+                            <label class="text-sm font-medium text-gray-200 block mb-1">Notifikasi Email</label>
+                            <p class="text-xs text-gray-400">Terima update pesanan, promo, dan laporan akun via Email.</p>
+                        </div>
+                        <div class="ml-4 flex items-center h-5">
+                            {{ form.email_notifications }}
+                        </div>
+                    </div>
+                    
+                    <!-- Push Notifications -->
+                    <div class="flex items-center justify-between group">
+                        <div class="flex-1">
+                            <label class="text-sm font-medium text-gray-200 block mb-1">Notifikasi Push (Web)</label>
+                            <p class="text-xs text-gray-400">Terima pesan masuk dan pengingat jadwal langsung di browser.</p>
+                        </div>
+                        <div class="ml-4 flex items-center h-5">
+                            {{ form.push_notifications }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-6 border-t border-gray-700/50 flex gap-4">
+                    <button type="submit" class="flex-1 px-6 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/30 transition-all card-hover flex justify-center items-center gap-2">
+                        <span>🛡️</span> Simpan Pengaturan
+                    </button>
+                    <a href="{% url 'booking:dashboard' %}" class="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-bold rounded-xl transition-all flex justify-center items-center">
+                        Batal
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

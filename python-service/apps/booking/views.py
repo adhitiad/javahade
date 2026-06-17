@@ -1,5 +1,5 @@
 """
-Views Booking — Autentikasi, dashboard, CRUD booking, dan API chart.
+Views Booking â€” Autentikasi, dashboard, CRUD booking, dan API chart.
 Semua view yang membutuhkan login dilindungi dengan @login_required.
 CSRF protection aktif secara default pada semua form POST.
 """
@@ -583,12 +583,13 @@ def book_host_view(request, username):
                         surge_multiplier = Decimal("1.0")
                         if active_bookings_count >= 2:
                             excess = active_bookings_count - 1
-                            surge_increase = Decimal("0.10") * Decimal(str(excess))
+                            surge_increase = Decimal("0.10") * Decimal(excess)
                             if surge_increase > Decimal("0.50"):
                                 surge_increase = Decimal("0.50")
                             surge_multiplier += surge_increase
 
-                        final_price = (price * surge_multiplier) * exchange_rate
+                        from decimal import ROUND_HALF_UP
+                        final_price = ((price * surge_multiplier) * exchange_rate).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
                         # Metode Wallet atau PayPal (yang sudah otomatis top-up wallet via JS API)
                         if (
@@ -866,7 +867,7 @@ def token_api(request):
     """
     Generate JWT access token untuk koneksi WebSocket.
     Token ini akan dikirim ke Go chat-service saat connect.
-    Dilindungi session auth — hanya user yang login bisa mendapatkan token.
+    Dilindungi session auth â€” hanya user yang login bisa mendapatkan token.
     """
     user = request.user
     token = AccessToken.for_user(user)
@@ -1476,9 +1477,53 @@ def client_reschedule_host_booking_view(request, booking_id):
 
     msg = "Jadwal berhasil diubah."
     if is_elite:
-        msg = "Jadwal berhasil diubah (GRATIS karena Anda adalah Klien Elite 👑)."
+        msg = "Jadwal berhasil diubah (GRATIS karena Anda adalah Klien Elite ðŸ‘‘)."
     else:
         msg += f" Biaya reschedule IDR {reschedule_fee} telah dipotong."
 
     messages.success(request, msg)
     return redirect("booking:my_bookings")
+
+from .forms import ProfileEditForm, SettingsForm
+from django.core.exceptions import PermissionDenied
+
+@login_required
+def edit_profile_view(request):
+    """
+    Halaman untuk mengubah profil pengguna.
+    Hanya bisa diakses oleh role USER biasa.
+    """
+    if request.user.role not in [request.user.Role.USER]:
+        raise PermissionDenied("Hanya User yang dapat mengakses halaman profil ini.")
+
+    if request.method == "POST":
+        form = ProfileEditForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Profil berhasil diperbarui.")
+            return redirect("booking:edit_profile")
+    else:
+        form = ProfileEditForm(instance=request.user)
+    
+    return render(request, "booking/edit_profile.html", {"form": form})
+
+
+@login_required
+def settings_view(request):
+    """
+    Halaman pengaturan preferensi (Notifikasi, privasi).
+    Hanya bisa diakses oleh role USER biasa.
+    """
+    if request.user.role not in [request.user.Role.USER]:
+        raise PermissionDenied("Hanya User yang dapat mengakses halaman pengaturan ini.")
+
+    if request.method == "POST":
+        form = SettingsForm(request.POST, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Pengaturan berhasil disimpan.")
+            return redirect("booking:settings")
+    else:
+        form = SettingsForm(instance=request.user)
+    
+    return render(request, "booking/settings.html", {"form": form})

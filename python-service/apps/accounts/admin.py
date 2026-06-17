@@ -14,7 +14,7 @@ class UserAdmin(BaseUserAdmin):
     list_filter = ["role", "is_verified", "is_active"]
     search_fields = ["username", "email"]
     fieldsets = BaseUserAdmin.fieldsets + (  # type: ignore
-        ("Kreativa", {"fields": ("avatar", "bio", "role", "is_verified", "phone", "date_of_birth")}),
+        ("Kreativa", {"fields": ("avatar", "bio", "role", "is_verified", "date_of_birth")}),
     )
 
 
@@ -55,6 +55,7 @@ class HostAchievementAdmin(admin.ModelAdmin):
                 host.balance_idr += obj.badge.bonus_idr
                 host.save(update_fields=['balance_idr'])
                 
+                # pyrefly: ignore [missing-import]
                 from apps.payments.models import WalletTransaction
                 WalletTransaction.objects.create(
                     user=host,

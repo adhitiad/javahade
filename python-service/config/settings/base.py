@@ -197,7 +197,6 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "common.authentication.CustomJWTAuthentication",
-        "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
@@ -243,7 +242,7 @@ SIMPLE_JWT = {
     ),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-    "SIGNING_KEY": config("JWT_SECRET_KEY", default=SECRET_KEY),
+    "SIGNING_KEY": config("JWT_SECRET_KEY"),
     "ALGORITHM": "HS256",
     "AUTH_HEADER_TYPES": ("Bearer",),
     "USER_ID_FIELD": "id",
@@ -277,8 +276,8 @@ CELERY_TIMEZONE = TIME_ZONE
 # =============================================================================
 # Security & Cookies (Phase 2)
 # =============================================================================
-SESSION_COOKIE_SECURE = not config("DEBUG", default=False, cast=bool)
-CSRF_COOKIE_SECURE = not config("DEBUG", default=False, cast=bool)
+SESSION_COOKIE_SECURE = config("SESSION_COOKIE_SECURE", default=False, cast=bool)
+CSRF_COOKIE_SECURE = config("CSRF_COOKIE_SECURE", default=False, cast=bool)
 SESSION_COOKIE_HTTPONLY = True
 SESSION_COOKIE_SAMESITE = 'Strict'
 

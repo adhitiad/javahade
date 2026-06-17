@@ -53,8 +53,10 @@ class User(AbstractUser):
     jwt_secret_version = models.IntegerField(default=1, verbose_name="JWT Secret Version (Log out All)")
     transaction_pin = models.CharField(max_length=128, blank=True, null=True, verbose_name="PIN Transaksi (Hashed)")
     
-    # Privasi & GDPR
+    # Privasi & GDPR & Pengaturan
     has_accepted_cookies = models.BooleanField(default=False, verbose_name="Cookie Consent")
+    email_notifications = models.BooleanField(default=True, verbose_name="Notifikasi Email")
+    push_notifications = models.BooleanField(default=True, verbose_name="Notifikasi Push")
     
     updated_at = models.DateTimeField(auto_now=True)
 
