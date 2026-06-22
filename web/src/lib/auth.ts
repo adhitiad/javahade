@@ -2,6 +2,9 @@ import { betterAuth } from "better-auth";
 
 export const auth = betterAuth({
   baseURL: "http://localhost:3000/",
+  advanced: {
+    useSecureCookies: false, // Penting untuk HTTP localhost di mode production!
+  },
   emailAndPassword: { enabled: true },
   socialProviders: {
     facebook: {

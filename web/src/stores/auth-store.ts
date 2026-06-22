@@ -102,6 +102,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       fetchUser: async () => {
+        set({ isLoading: true });
         try {
           const user = await django.get<User>("/users/me/");
           set({ user, isAuthenticated: true, isLoading: false });

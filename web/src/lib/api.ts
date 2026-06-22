@@ -8,14 +8,16 @@ import type {
   ExchangeRates,
 } from "@/types";
 
+const isServer = typeof window === "undefined";
+
 const DJANGO_API_BASE =
-  process.env.NEXT_PUBLIC_DJANGO_API_URL || "http://localhost:8000/api/v1";
+  (isServer ? (process.env.INTERNAL_API_URL ? `${process.env.INTERNAL_API_URL}/api/v1` : null) : null) || process.env.NEXT_PUBLIC_DJANGO_API_URL || "http://localhost:8000/api/v1";
 const GO_BOOKING_BASE =
-  process.env.NEXT_PUBLIC_BOOKING_API_URL || "http://localhost:3333/api/v1";
+  (isServer ? (process.env.INTERNAL_BOOKING_API_URL ? `${process.env.INTERNAL_BOOKING_API_URL}/api/v1` : null) : null) || process.env.NEXT_PUBLIC_BOOKING_API_URL || "http://localhost:3333/api/v1";
 const GO_STREAM_BASE =
-  process.env.NEXT_PUBLIC_STREAM_API_URL || "http://localhost:3334";
+  (isServer ? process.env.INTERNAL_STREAM_API_URL : null) || process.env.NEXT_PUBLIC_STREAM_API_URL || "http://localhost:3334";
 const GO_CHAT_BASE =
-  process.env.NEXT_PUBLIC_CHAT_API_URL || "http://localhost:3335";
+  (isServer ? process.env.INTERNAL_CHAT_API_URL : null) || process.env.NEXT_PUBLIC_CHAT_API_URL || "http://localhost:3335";
 
 class ApiError extends Error {
   status: number;

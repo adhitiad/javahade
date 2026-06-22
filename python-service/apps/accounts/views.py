@@ -211,8 +211,8 @@ class SocialLoginView(APIView):
                 user.save()
 
         # Generate JWT Tokens
-        from rest_framework_simplejwt.tokens import RefreshToken
-        refresh = RefreshToken.for_user(user)
+        from .serializers import CustomTokenObtainPairSerializer
+        refresh = CustomTokenObtainPairSerializer.get_token(user)
         access_token = str(refresh.access_token)
         refresh_token = str(refresh)
 

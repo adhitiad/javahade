@@ -9,7 +9,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const resolvedParams = await params;
   const username = resolvedParams.username;
   try {
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
+    const baseUrl = (process.env.INTERNAL_API_URL ? `${process.env.INTERNAL_API_URL}/api/v1` : null) || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
     const res = await fetch(`${baseUrl}/creators/${username}/`, { next: { revalidate: 60 } });
     if (!res.ok) throw new Error('Not found');
     const profile = await res.json();

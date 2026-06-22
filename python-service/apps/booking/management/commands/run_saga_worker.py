@@ -19,7 +19,8 @@ class Command(BaseCommand):
     def handle(self, *args, **kwargs):
         # Konfigurasi Redis
         redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6379/0')
-        r = redis.from_url(redis_url, decode_responses=True)
+        # socket_timeout harus lebih besar dari block time (5000ms = 5s) pada xreadgroup
+        r = redis.from_url(redis_url, decode_responses=True, socket_timeout=10)
 
         stream_name = 'saga:booking_events'
         group_name = 'python_payment_service'

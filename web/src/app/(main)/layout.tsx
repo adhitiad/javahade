@@ -3,6 +3,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { useUIStore } from '@/stores/ui-store';
 import { Navbar, Sidebar, NSFWGate, BottomNav, MainContent } from '@/components/layout';
+import { useAuthStore } from '@/stores/auth-store';
 
 
 export default function MainLayout({
@@ -11,6 +12,7 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const { nsfwAccepted, setIsMobile } = useUIStore();
+  const { fetchUser } = useAuthStore();
 
   // Hydration-safe mounted check
   const mounted = useSyncExternalStore(
@@ -24,8 +26,12 @@ export default function MainLayout({
     const check = () => setIsMobile(window.innerWidth < 1024);
     check();
     window.addEventListener('resize', check);
+    
+    // Fetch current user from Django session to populate Zustand store
+    fetchUser();
+    
     return () => window.removeEventListener('resize', check);
-  }, [setIsMobile]);
+  }, [setIsMobile, fetchUser]);
 
   if (!mounted) {
     return (

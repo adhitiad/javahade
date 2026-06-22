@@ -24,6 +24,12 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 # Application definition
 # =============================================================================
 
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+]
+
 DJANGO_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -358,4 +364,9 @@ CURRENCY_API_KEY = config("CURRENCY_API_KEY", default="")
 # =============================================================================
 # VideoSDK
 # =============================================================================
-VIDEOSDK_TOKEN = config("VIDEOSDK_TOKEN")
+VIDEOSDK_TOKEN = config("VIDEOSDK_TOKEN", default="")
+
+# =============================================================================
+# Internal Microservice Auth
+# =============================================================================
+INTERNAL_SERVICE_TOKEN = config("INTERNAL_SERVICE_TOKEN", default="token-rahasia-kreativa-internal")

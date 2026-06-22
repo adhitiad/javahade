@@ -46,7 +46,7 @@ class PostFeedView(generics.ListAPIView):
             # Get creators the user is subscribed to
             subscribed_creator_ids = user.subscriptions.filter( # type: ignore
                 status="active"
-            ).values_list("tier__creator__user_id", flat=True).distinct()
+            ).values_list("tier__creator_id", flat=True).distinct()
 
             # Show public posts + subscribed creator's premium posts
             qs = qs.filter(

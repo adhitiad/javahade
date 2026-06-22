@@ -47,7 +47,16 @@ export function AuthLoginTab({ onSwitchTab }: { onSwitchTab: (tab: string) => vo
       // Sync Better Auth session ke Django agar Go services bisa autentikasi
       try {
         const syncRes = await fetch('/api/auth/sync');
-        if (!syncRes.ok) {
+        if (syncRes.ok) {
+          const syncData = await syncRes.json();
+          // Simpan JWT tokens dari Django ke localStorage
+          if (syncData.tokens?.access) {
+            localStorage.setItem('access_token', syncData.tokens.access);
+          }
+          if (syncData.tokens?.refresh) {
+            localStorage.setItem('refresh_token', syncData.tokens.refresh);
+          }
+        } else {
           console.warn('Django sync gagal, melanjutkan dengan Better Auth session saja');
         }
       } catch (syncErr) {
@@ -55,7 +64,7 @@ export function AuthLoginTab({ onSwitchTab }: { onSwitchTab: (tab: string) => vo
       }
 
       toast.success('Berhasil masuk!');
-      window.location.href = '/dashboard'; 
+      window.location.href = '/'; 
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan');
     } finally {
@@ -164,7 +173,7 @@ export function AuthLoginTab({ onSwitchTab }: { onSwitchTab: (tab: string) => vo
           <Button 
             variant="outline" 
             type="button" 
-            onClick={() => authClient.signIn.social({ provider: 'google', callbackURL: '/auth-callback' })}
+            onClick={() => authClient.signIn.social({ provider: 'google', callbackURL: '/' })}
             disabled={isLoading}
           >
             Google
@@ -172,7 +181,7 @@ export function AuthLoginTab({ onSwitchTab }: { onSwitchTab: (tab: string) => vo
           <Button 
             variant="outline" 
             type="button" 
-            onClick={() => authClient.signIn.social({ provider: 'facebook', callbackURL: '/auth-callback' })}
+            onClick={() => authClient.signIn.social({ provider: 'facebook', callbackURL: '/' })}
             disabled={isLoading}
           >
             Facebook

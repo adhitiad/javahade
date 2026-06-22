@@ -20,7 +20,7 @@ export default function AuthCallbackPage() {
         if (mounted) {
           toast.success('Berhasil masuk melalui layanan Social!');
           // Arahkan ke dashboard
-          router.replace('/dashboard');
+          router.replace('/');
         }
       } catch (err: any) {
         if (mounted) {

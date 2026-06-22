@@ -214,7 +214,7 @@ export function Sidebar() {
                 <p className="text-sm font-medium truncate">{user.username}</p>
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs text-muted-foreground">
-                    ${user.balance_usd.toFixed(2)}
+                    ${user.balance_usd?.toFixed(2) ?? '0.00'}
                   </span>
                   {(isAdmin || isHost) && (
                     <Badge

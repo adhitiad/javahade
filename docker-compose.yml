@@ -1,4 +1,3 @@
-version: '3.8'
 
 services:
   # ==============================================================
@@ -24,10 +23,12 @@ services:
       - kreativa_net
 
   pgbouncer:
-    image: edoburu/pgbouncer:1.21.0
+    image: edoburu/pgbouncer:latest
     container_name: kreativa_pgbouncer
     environment:
       DATABASE_URL: "postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}"
+      LISTEN_PORT: 6432
+      AUTH_TYPE: scram-sha-256
       POOL_MODE: transaction
       MAX_CLIENT_CONN: 1000
       DEFAULT_POOL_SIZE: 20
@@ -52,6 +53,16 @@ services:
     networks:
       - kreativa_net
 
+  mongodb:
+    image: mongo:6
+    container_name: kreativa_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodata:/data/db
+    networks:
+      - kreativa_net
+
   # ==============================================================
   # PYTHON / DJANGO SERVICES
   # ==============================================================
@@ -60,13 +71,17 @@ services:
       context: ./python-service
     container_name: kreativa_python
     environment:
-      - DB_HOST=pgbouncer
-      - DB_PORT=6432
+      - DB_HOST=postgres
+      - DB_PORT=5432
       - DB_NAME=${DB_NAME:-kreativa_db}
       - DB_USER=${DB_USER:-kreativa}
       - DB_PASSWORD=${DB_PASSWORD:-kreativa_pass}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - DEBUG=${DEBUG:-False}
+      - DATABASE_URL=postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - ALLOWED_HOSTS=*
+      - DEBUG=True
     depends_on:
       pgbouncer:
         condition: service_started
@@ -83,13 +98,17 @@ services:
     container_name: kreativa_saga_worker
     command: python manage.py run_saga_worker
     environment:
-      - DB_HOST=pgbouncer
-      - DB_PORT=6432
+      - DB_HOST=postgres
+      - DB_PORT=5432
       - DB_NAME=${DB_NAME:-kreativa_db}
       - DB_USER=${DB_USER:-kreativa}
       - DB_PASSWORD=${DB_PASSWORD:-kreativa_pass}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
-      - DEBUG=${DEBUG:-False}
+      - DATABASE_URL=postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - ALLOWED_HOSTS=*
+      - DEBUG=True
     depends_on:
       - python-api
     networks:
@@ -105,12 +124,13 @@ services:
         SERVICE_NAME: booking-service
     container_name: kreativa_booking
     environment:
-      - DB_HOST=pgbouncer
-      - DB_PORT=6432
+      - DB_HOST=postgres
+      - DB_PORT=5432
       - DB_NAME=${DB_NAME:-kreativa_db}
       - DB_USER=${DB_USER:-kreativa}
       - DB_PASSWORD=${DB_PASSWORD:-kreativa_pass}
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - DATABASE_URL=postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
       - BOOKING_SERVICE_PORT=3333
       - PORT=3333
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:5173}
@@ -131,7 +151,7 @@ services:
         SERVICE_NAME: stream-service
     container_name: kreativa_stream
     environment:
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=redis://redis:6379/0
       - STREAM_SERVICE_PORT=3334
       - PORT=3334
       - MODERATION_API_URL=http://python-api:8000/api/v1/moderation/check/
@@ -150,7 +170,8 @@ services:
         SERVICE_NAME: chat-service
     container_name: kreativa_chat
     environment:
-      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+      - REDIS_URL=redis://redis:6379/0
+      - MONGO_URI=mongodb://mongodb:27017
       - CHAT_SERVICE_PORT=3335
       - PORT=3335
       - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:3001,http://localhost:5173}
@@ -158,6 +179,7 @@ services:
       - "3335:3335"
     depends_on:
       - redis
+      - mongodb
     networks:
       - kreativa_net
 
@@ -170,6 +192,13 @@ services:
     container_name: kreativa_web
     environment:
       - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL:-http://localhost:8000}
+      - INTERNAL_API_URL=http://python-api:8000
+      - INTERNAL_SERVICE_TOKEN=${INTERNAL_SERVICE_TOKEN:-token-rahasia-kreativa-internal}
+      - BETTER_AUTH_SECRET=rahasia-better-auth-kreativa-sepanjang-minimal-32-karakter
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-dummy-google-client-id}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-dummy-google-client-secret}
+      - FACEBOOK_CLIENT_ID=${FACEBOOK_CLIENT_ID:-dummy-facebook-client-id}
+      - FACEBOOK_CLIENT_SECRET=${FACEBOOK_CLIENT_SECRET:-dummy-facebook-client-secret}
       - NODE_ENV=production
     ports:
       - "3000:3000"
@@ -186,3 +215,4 @@ networks:
 volumes:
   pgdata:
   redisdata:
+  mongodata:

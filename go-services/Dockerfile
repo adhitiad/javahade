@@ -1,16 +1,11 @@
-# Build Stage
-FROM golang:1.21-alpine AS builder
+FROM golang:alpine AS builder
 
 WORKDIR /app
 
 # Install dependencies for CGO (jika diperlukan)
 RUN apk add --no-cache gcc musl-dev
 
-# Copy go mod and sum files
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy source code
+# Copy source code yang berisi go.work dan semua sub-modul
 COPY . .
 
 # Argument untuk memilih service mana yang akan di-build
