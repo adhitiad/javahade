@@ -7,17 +7,18 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/kreativa/chat-service/internal/service"
 	"github.com/adhitiad/javahade/shared/middleware"
+	"github.com/kreativa/chat-service/internal/service"
 )
 
 // RoomHandler handles REST endpoints for room management.
 type RoomHandler struct {
-	svc *service.RoomService
+	svc    *service.RoomService
+	msgSvc *service.MessageService
 }
 
-func NewRoomHandler(svc *service.RoomService) *RoomHandler {
-	return &RoomHandler{svc: svc}
+func NewRoomHandler(svc *service.RoomService, msgSvc *service.MessageService) *RoomHandler {
+	return &RoomHandler{svc: svc, msgSvc: msgSvc}
 }
 
 func (h *RoomHandler) ListRooms(w http.ResponseWriter, r *http.Request) {
@@ -88,7 +89,7 @@ func (h *RoomHandler) CreateRoom(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *RoomHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
-	_ = chi.URLParam(r, "roomID")
+	roomID := chi.URLParam(r, "roomID")
 
 	limitStr := r.URL.Query().Get("limit")
 	offsetStr := r.URL.Query().Get("offset")
@@ -103,16 +104,26 @@ func (h *RoomHandler) GetMessages(w http.ResponseWriter, r *http.Request) {
 		offset = o
 	}
 
-	roomID := chi.URLParam(r, "roomID")
-
-	// TODO(L-5): Implement GetMessages using MongoDB
-	// Currently returning empty slice as a stub
-	// See Mavis Audit L-5
-	_ = limit
-	_ = offset
-	_ = roomID
+	messages, err := h.msgSvc.GetMessages(r.Context(), roomID, limit, offset)
+	if err != nil {
+		http.Error(w, `{"detail":"Failed to get messages"}`, http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode([]interface{}{})
+	json.NewEncoder(w).Encode(messages)
 }
 
+// ListConversations returns DM conversations with last message preview.
+func (h *RoomHandler) ListConversations(w http.ResponseWriter, r *http.Request) {
+	userID := middleware.GetUserID(r.Context())
+
+	conversations, err := h.svc.GetConversations(r.Context(), userID)
+	if err != nil {
+		http.Error(w, `{"detail":"Failed to list conversations"}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(conversations)
+}

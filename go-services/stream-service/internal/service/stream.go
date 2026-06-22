@@ -19,11 +19,11 @@ import (
 // StreamService handles stream lifecycle.
 type StreamService struct {
 	redis *redis.Client
-	ome   *OMEService
+	videosdk *VideoSDKService
 }
 
-func NewStreamService(redis *redis.Client, ome *OMEService) *StreamService {
-	return &StreamService{redis: redis, ome: ome}
+func NewStreamService(redis *redis.Client, videosdk *VideoSDKService) *StreamService {
+	return &StreamService{redis: redis, videosdk: videosdk}
 }
 
 // CreateStream creates a new live stream session.
@@ -61,8 +61,8 @@ func (s *StreamService) CreateStream(ctx context.Context, creatorID string, req 
 		CreatedAt:   time.Now(),
 	}
 
-	// Register with OME
-	s.ome.CreateStream("live", streamKey)
+	// Register with VideoSDK
+	s.videosdk.CreateStream("live", streamID)
 
 	// Store stream metadata in Redis
 	data, _ := json.Marshal(stream)
@@ -108,8 +108,8 @@ func (s *StreamService) StopStream(ctx context.Context, streamID, creatorID stri
 	stream.Status = "ended"
 	stream.EndedAt = &now
 
-	// Stop on OME
-	s.ome.StopStream("live", stream.StreamKey)
+	// Stop on VideoSDK
+	s.videosdk.StopStream("live", stream.ID)
 
 	// Update Redis
 	data, _ := json.Marshal(stream)

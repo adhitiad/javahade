@@ -59,7 +59,7 @@ func main() {
 
 	// Initialize handlers
 	chatHandler := handler.NewChatHandler(hub, cfg.JWTSecretKey)
-	roomHandler := handler.NewRoomHandler(roomSvc)
+	roomHandler := handler.NewRoomHandler(roomSvc, messageSvc)
 
 	// Setup router
 	r := chi.NewRouter()
@@ -82,6 +82,7 @@ func main() {
 		r.Use(middleware.JWTAuth(cfg.JWTSecretKey))
 		r.Get("/", roomHandler.ListRooms)
 		r.Post("/", roomHandler.CreateRoom)
+		r.Get("/conversations", roomHandler.ListConversations)
 		r.Get("/{roomID}/messages", roomHandler.GetMessages)
 	})
 
@@ -113,4 +114,3 @@ func main() {
 	srv.Shutdown(shutdownCtx)
 	fmt.Println("Chat service stopped")
 }
-

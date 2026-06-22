@@ -16,8 +16,9 @@ class PayPalService:
         client_id = settings.PAYPAL_CLIENT_ID
         secret = settings.PAYPAL_SECRET
 
-        if client_id == "mock-client-id":
-            return "mock-access-token"
+        if not client_id or not secret:
+            logger.error("PayPal credentials are missing")
+            return None
 
         url = f"{self.base_url}/v1/oauth2/token"
         headers = {
@@ -38,8 +39,7 @@ class PayPalService:
 
     def create_order(self, amount, currency="USD"):
         token = self.get_access_token()
-        if token == "mock-access-token":
-            return {"id": "MOCK-ORDER-ID", "status": "CREATED"}
+
 
         if not token:
             return None
@@ -71,8 +71,7 @@ class PayPalService:
 
     def capture_order(self, order_id):
         token = self.get_access_token()
-        if token == "mock-access-token":
-            return {"status": "COMPLETED"}
+
 
         if not token:
             return None

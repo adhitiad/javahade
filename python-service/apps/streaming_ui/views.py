@@ -21,6 +21,36 @@ def stream_list(request):
     context = {
         "streams": all_streams,
     }
+    
+    wants_json = "application/json" in request.headers.get("Accept", "") or request.GET.get("format") == "json"
+    if wants_json:
+        from django.http import JsonResponse
+        data = []
+        for s in all_streams:
+            host_profile_data = None
+            if hasattr(s.host, "creator_profile") and s.host.creator_profile:
+                profile = s.host.creator_profile
+                host_profile_data = {
+                    "display_name": profile.display_name,
+                    "avatar": profile.avatar.url if profile.avatar else None,
+                }
+            data.append({
+                "id": str(s.id),
+                "host": s.host.username,
+                "host_name": host_profile_data["display_name"] if host_profile_data else s.host.get_full_name() or s.host.username,
+                "host_avatar_color": "bg-rose-500",
+                "title": s.title,
+                "description": s.description,
+                "scheduled_time": s.scheduled_time.isoformat() if s.scheduled_time else None,
+                "ticket_price_usd": float(s.ticket_price_usd),
+                "is_family_only": s.is_family_only,
+                "status": s.status,
+                "viewer_count": s.viewer_count,
+                "created_at": s.created_at.isoformat(),
+                "duration": "00:00:00"
+            })
+        return JsonResponse({"results": data})
+
     return render(request, "streaming/list.html", context)
 
 @login_required
@@ -34,6 +64,8 @@ def stream_detail(request, slot_id):
     else:
         has_ticket = StreamTicket.objects.filter(stream=stream, user=request.user).exists()
         
+    wants_json = "application/json" in request.headers.get("Accept", "")
+    
     if request.method == "POST" and not has_ticket:
         from django.db import transaction
         
@@ -66,15 +98,39 @@ def stream_detail(request, slot_id):
                     notes=f"Penjualan Tiket: {stream.title} ke @{user.username}"
                 )
                 
+                if wants_json:
+                    from django.http import JsonResponse
+                    return JsonResponse({"status": "success", "message": "Tiket berhasil dibeli! Anda sekarang memiliki akses.", "has_ticket": True})
+                
                 messages.success(request, "Tiket berhasil dibeli! Anda sekarang memiliki akses.")
                 has_ticket = True
             else:
+                if wants_json:
+                    from django.http import JsonResponse
+                    return JsonResponse({"status": "error", "message": "Saldo USD Anda tidak mencukupi untuk membeli tiket ini."}, status=402)
+                
                 messages.error(request, "Saldo USD Anda tidak mencukupi untuk membeli tiket ini.")
             
     context = {
         "stream": stream,
         "has_ticket": has_ticket
     }
+    
+    if wants_json:
+        from django.http import JsonResponse
+        return JsonResponse({
+            "id": str(stream.id),
+            "host": stream.host.username,
+            "title": stream.title,
+            "description": stream.description,
+            "scheduled_time": stream.scheduled_time.isoformat() if stream.scheduled_time else None,
+            "ticket_price_usd": float(stream.ticket_price_usd),
+            "is_family_only": stream.is_family_only,
+            "status": stream.status,
+            "viewer_count": stream.viewer_count,
+            "has_ticket": has_ticket
+        })
+
     return render(request, "streaming/detail.html", context)
 
 @login_required
@@ -93,19 +149,13 @@ def stream_watch(request, stream_id):
         messages.error(request, "Anda harus memiliki tiket untuk menonton stream ini.")
         return redirect("streaming:stream_detail", slot_id=stream.id)
 
-    # Generate Signed Token for OvenMediaEngine (HMAC-SHA256)
-    # Ini mensimulasikan Admission Webhook OME SignedPolicy
-    import hmac
-    import hashlib
-    import base64
+    # Generate Video SDK Token
+    # Ini untuk Video SDK (token statis dari .env, atau disesuaikan di server-side jika ada API Secret)
     from django.conf import settings
     
-    secret_key = getattr(settings, 'OME_WEBHOOK_SECRET', 'javahade-super-secret-ome-key')
-    payload = f"{stream.id}:{request.user.id}:{int(timezone.now().timestamp()) + 3600}" # Berlaku 1 jam
-    signature = hmac.new(secret_key.encode(), payload.encode(), hashlib.sha256).digest()
-    token = base64.urlsafe_b64encode(signature).decode().rstrip('=')
-    
-    signed_token = f"{payload}.{token}"
+    # Karena kita sudah menggunakan JWT dari Video SDK
+    signed_token = getattr(settings, 'VIDEOSDK_TOKEN', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhcGlrZXkiOiJkY2M2NDRjNS01MWNhLTQ1ZWEtOGI2MC03MzdmYzYxODJlZWMiLCJwZXJtaXNzaW9ucyI6WyJhbGxvd19qb2luIl0sImlhdCI6MTc4MjEwNTI4NSwiZXhwIjoxOTM5ODkzMjg1fQ.aXaq8vdQnU2SeWyvOwPluWRaxwR1bhd5D25B_W7Oa6M')
+
 
     context = {
         "stream": stream,
@@ -113,6 +163,24 @@ def stream_watch(request, stream_id):
         "signed_token": signed_token,
         "viewer_ip": request.META.get('HTTP_CF_CONNECTING_IP', request.META.get('REMOTE_ADDR', '127.0.0.1'))
     }
+    
+    wants_json = "application/json" in request.headers.get("Accept", "")
+    if wants_json:
+        from django.http import JsonResponse
+        return JsonResponse({
+            "stream": {
+                "id": str(stream.id),
+                "host": stream.host.username,
+                "title": stream.title,
+                "status": stream.status,
+                "viewer_count": stream.viewer_count,
+                "stream_key": stream.stream_key,
+            },
+            "is_host": stream.host == request.user,
+            "signed_token": signed_token,
+            "viewer_ip": context["viewer_ip"]
+        })
+
     return render(request, "streaming/watch.html", context)
 
 

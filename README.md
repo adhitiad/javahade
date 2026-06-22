@@ -1,12 +1,12 @@
 # javahade
 
-Platform eksklusif untuk penyewaan layanan _Host_ (Kreator) secara privat dan interaksi _Live Streaming_ premium. Proyek ini adalah aplikasi full-stack yang dibangun menggunakan **Django** (berserta arsitektur Template & HTMX) untuk Backend Utama, dipadukan dengan **Go Microservices** untuk fitur _Real-Time_ (Chat, Streaming WebRTC, Booking Presences).
+Platform eksklusif untuk penyewaan layanan _Host_ (Kreator) secara privat dan interaksi _Live Streaming_ premium. Proyek ini adalah aplikasi full-stack yang dibangun menggunakan **Next.js 16 (App Router)** untuk Frontend, **Django REST Framework** untuk Backend Utama, dipadukan dengan **Go Microservices** untuk fitur _Real-Time_ (Chat, Streaming WebRTC, Booking Presences).
 
 ## Arsitektur
 
 ```text
 E:\java\
-├── python-service\    # Django Backend & Frontend (HTMX/Template)
+├── python-service\    # Django Backend API
 │   ├── apps\          # Modul: Accounts, Booking, Content, Moderation, Payments, dll.
 │   └── config\        # Konfigurasi Utama, Celery, Database
 ├── go-services\       # Go Microservices:
@@ -14,6 +14,7 @@ E:\java\
 │   ├── chat-service   # Real-time Chat (WebSocket Hub)
 │   ├── booking-service# Booking & Presence WebSocket
 │   └── shared\        # Shared package (Database, Middleware, Config)
+├── web\               # Next.js 16 App Router Frontend (Bun, TypeScript, Zustand, Tailwind)
 └── nginx\             # Reverse Proxy & Static Files
 ```
 
@@ -21,7 +22,7 @@ E:\java\
 
 | Layer     | Teknologi                                                                                          |
 | --------- | -------------------------------------------------------------------------------------------------- |
-| Frontend  | **Django Template** dipadukan dengan **HTMX** untuk reaktivitas SPA tanpa Javascript rumit.        |
+| Frontend  | **Next.js 16 (App Router)**, **TypeScript (Strict Mode)**, **Zustand**, **Tailwind CSS**, **shadcn/ui**. |
 | API       | **Python 3.10+, Django, Django REST Framework, PostgreSQL, Redis, Celery**.                        |
 | Real-time | **Go, gorilla/websocket**. (Membangun WebSocket hub dengan Redis Pub/Sub antar service).           |
 | AI System | **Groq Vision API** (Verifikasi KYC KTP & Selfie otomatis) dan **OpenAI** (Moderasi Konten).       |
@@ -40,6 +41,7 @@ E:\java\
 
 ## Prasyarat Lingkungan
 
+- **Bun** (Runtime wajib untuk frontend `web`)
 - **Python 3.10+** (untuk `python-service`)
 - **Go 1.21+** (untuk `go-services`)
 - **PostgreSQL** (Database Relasional Utama)
@@ -49,7 +51,7 @@ E:\java\
 
 ## Pemasangan & Panduan Menjalankan
 
-### 1. Python Backend & Frontend Server
+### 1. Python Backend API Server
 
 ```bash
 cd python-service
@@ -80,7 +82,17 @@ cd chat-service
 go run main.go
 ```
 
-### 3. Nginx Reverse Proxy
+### 3. Next.js Frontend Server
+
+Gunakan runtime **Bun** untuk menjalankan frontend proyek ini:
+
+```bash
+cd web
+bun install
+bun run dev
+```
+
+### 4. Nginx Reverse Proxy
 
 Pastikan Nginx sudah terpasang dan perbarui konfigurasinya mengacu pada file `nginx/nginx.conf` sesuai lingkungan (Local/Production) Anda.
 

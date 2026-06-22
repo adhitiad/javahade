@@ -43,7 +43,7 @@ class CreatePaymentView(APIView):
         from typing import cast
         data = cast(dict, serializer.validated_data)
         from django.conf import settings
-        provider_name = getattr(settings, "DEFAULT_PAYMENT_PROVIDER", "mock")
+        provider_name = getattr(settings, "DEFAULT_PAYMENT_PROVIDER", "stripe")
         provider = get_payment_provider(provider_name)
         result = provider.create_payment(
             amount=float(data["amount"]),
@@ -66,7 +66,7 @@ class CreatePaymentView(APIView):
                 currency=data["currency"],
                 payment_type=data["payment_type"],
                 status=PaymentIntent.Status.COMPLETED,
-                provider="mock",
+                provider=provider_name,
                 provider_ref=result.provider_ref,
                 metadata=data.get("metadata", {}),
             )

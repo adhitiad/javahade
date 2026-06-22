@@ -1,0 +1,16 @@
+{
+  "name": "Javahade Platform",
+  "short_name": "Javahade",
+  "description": "Platform streaming dan konten eksklusif",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#e11d48",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64",
+      "type": "image/x-icon"
+    }
+  ]
+}

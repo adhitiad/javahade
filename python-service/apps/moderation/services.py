@@ -25,33 +25,39 @@ class ContentModerationService:
 
     @staticmethod
     def _check_text_with_openai(text: str):
-        """Memanggil OpenAI Moderation API untuk deteksi kebencian, kekerasan ekstrem, eksploitasi, dll."""
-        api_key = getattr(settings, "OPENAI_API_KEY", None)
+        """Memanggil OpenRouter Moderation API (menggantikan OpenAI)."""
+        api_key = getattr(settings, "OPENROUTER_API_KEY", None)
         if not api_key or api_key == "dummy-key":
-            # Jika API key belum diset (saat development), lewati pemeriksaan OpenAI
             return
             
         headers = {
             "Authorization": f"Bearer {api_key}",
+            "HTTP-Referer": "http://localhost:8000",
+            "X-Title": "Javahade Platform",
             "Content-Type": "application/json"
         }
-        data = {"input": text}
+        
+        prompt = (
+            "Analyze the following text for moderation purposes. "
+            "If it contains severe violence, hate speech, sexual content, or child exploitation, "
+            "respond ONLY with 'FLAGGED'. Otherwise, respond ONLY with 'CLEAN'.\n\n"
+            f"Text: \"{text}\""
+        )
+        
+        data = {
+            "model": "nvidia/nemotron-3-ultra-550b-a55b:free",
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature": 0.1,
+            "max_tokens": 10
+        }
         
         try:
-            response = requests.post("https://api.openai.com/v1/moderations", headers=headers, json=data, timeout=5)
+            response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data, timeout=10)
             if response.status_code == 200:
-                result = response.json()["results"][0]
-                if result["flagged"]:
-                    categories = [cat for cat, flagged in result["categories"].items() if flagged]
-                    
-                    # Filter khusus untuk kekerasan / eksploitasi / seksual
-                    critical_categories = ["violence", "violence/graphic", "sexual", "sexual/minors", "hate"]
-                    for cat in categories:
-                        if cat in critical_categories:
-                            raise ValidationError(f"Konten ditolak oleh sistem AI: Terdeteksi unsur pelanggaran keras ({cat}).")
+                result_text = response.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                if "FLAGGED" in result_text.upper():
+                    raise ValidationError("Konten ditolak oleh sistem AI: Terdeteksi unsur pelanggaran keras.")
         except requests.RequestException:
-            # Jika API down, kita bisa memilih untuk memblokir atau melewatkan. 
-            # Untuk kenyamanan pengguna, kita lewatkan ke Custom Regex.
             pass
 
     @staticmethod
@@ -80,36 +86,54 @@ class ContentModerationService:
 
     @staticmethod
     def _check_image_with_vision(image_file):
-        """Memanggil Google Cloud Vision API untuk mendeteksi SafeSearch (Violence, Adult)."""
-        # Cek apakah modul terinstal
-        try:
-            from google.cloud import vision
-            import os
-        except ImportError:
-            # Jika library belum diinstall (development), lewati
-            return
-            
-        credentials_path = getattr(settings, "GOOGLE_APPLICATION_CREDENTIALS", None)
-        if not credentials_path or not os.path.exists(credentials_path):
+        """Memanggil OpenRouter (Llama Vision) untuk deteksi SafeSearch (menggantikan Google Vision)."""
+        import base64
+        import json
+        
+        api_key = getattr(settings, "OPENROUTER_API_KEY", None)
+        if not api_key or api_key == "dummy-key":
             return
             
         try:
-            client = vision.ImageAnnotatorClient()
             content = image_file.read()
-            # Reset pointer agar file masih bisa disimpan di Django setelahnya
+            encoded_image = base64.b64encode(content).decode("utf-8")
             image_file.seek(0)
             
-            image = vision.Image(content=content)
-            response = client.safe_search_detection(image=image)
-            safe = response.safe_search_annotation
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "Javahade Platform",
+                "Content-Type": "application/json"
+            }
             
-            # Skala likelihood (0-5): LIKELY=4, VERY_LIKELY=5
-            # Kita blokir jika kekerasan (violence) atau adult/racy >= LIKELY (4)
-            if safe.violence >= 4 or safe.adult >= 4:
-                raise ValidationError("Gambar ditolak oleh sistem AI: Terdeteksi unsur Gore/Kekerasan atau Pornografi.")
-                
+            prompt = (
+                "Analyze the following image for moderation. "
+                "If it contains severe violence, gore, explicit pornography, or child exploitation, "
+                "respond ONLY with 'FLAGGED'. Otherwise, respond ONLY with 'CLEAN'."
+            )
+            
+            data = {
+                "model": "meta-llama/llama-3.2-90b-vision-instruct",
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{encoded_image}"}}
+                        ]
+                    }
+                ],
+                "temperature": 0.1,
+                "max_tokens": 10
+            }
+            
+            response = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=data, timeout=15)
+            if response.status_code == 200:
+                result_text = response.json().get("choices", [{}])[0].get("message", {}).get("content", "").strip()
+                if "FLAGGED" in result_text.upper():
+                    raise ValidationError("Gambar ditolak oleh sistem AI: Terdeteksi unsur Gore/Kekerasan atau Pornografi.")
+                    
         except Exception as e:
             if isinstance(e, ValidationError):
                 raise e
-            # Abaikan error koneksi Google Vision
             pass

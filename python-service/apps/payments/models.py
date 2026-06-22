@@ -41,8 +41,8 @@ class PaymentIntent(models.Model):
         max_length=10, choices=Status.choices, default=Status.PENDING
     )
     provider = models.CharField(
-        max_length=50, default="mock",
-        help_text="Payment provider: mock, stripe, midtrans, xendit"
+        max_length=50, default="stripe",
+        help_text="Payment provider: stripe, crypto, paypal, midtrans, xendit"
     )
     provider_ref = models.CharField(
         max_length=255, blank=True, default="",

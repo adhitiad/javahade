@@ -52,6 +52,17 @@
                 </div>
             </div>
 
+            <!-- Harga Buka Chat (IDR) -->
+            <div>
+                <label class="block text-sm font-bold text-gray-300 mb-2">Harga Tiket Chat (IDR)</label>
+                <div class="flex gap-2">
+                    <span class="inline-flex items-center px-4 rounded-xl bg-gray-800 border border-white/10 text-gray-400 font-bold">Rp</span>
+                    <input type="number" step="1000" min="0" name="chat_price" value="{{ profile.chat_price|stringformat:'.0f' }}" required
+                           class="flex-1 bg-gray-900 border border-white/10 rounded-xl px-4 py-3 text-white focus:ring-2 focus:ring-purple-500 focus:outline-none">
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Biaya untuk Fans (yang tidak subscribe) jika ingin membuka obrolan dengan Anda. Isi 0 jika gratis.</p>
+            </div>
+
             <!-- Website Link -->
             <div>
                 <label class="block text-sm font-bold text-gray-300 mb-2">Website / Tautan Eksternal (Opsional)</label>

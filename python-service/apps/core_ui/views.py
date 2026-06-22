@@ -43,16 +43,16 @@ def index_view(request):
 def become_host_view(request):
     """View untuk mendaftar menjadi Host/Creator"""
     from apps.accounts.models import KYCDocument
-    from apps.accounts.services.kyc_ai import verify_kyc_with_groq  # type: ignore
+    from apps.accounts.services.kyc_ai import verify_kyc_with_openrouter  # type: ignore
     
     error_message = None
 
-    if request.method == "POST":
-        # 1. Validasi Gender (Hanya Perempuan)
-        if request.user.gender != User.Gender.FEMALE:
-            error_message = "Pendaftaran Ditolak: Hanya pengguna berjenis kelamin Perempuan yang diizinkan menjadi Host."
-            return render(request, "core/become_host.html", {"error_message": error_message})
+    # 1. Validasi Gender (Hanya Perempuan)
+    if request.user.gender != User.Gender.FEMALE:
+        messages.error(request, "Pendaftaran Ditolak: Hanya pengguna berjenis kelamin Perempuan yang diizinkan menjadi Host.")
+        return redirect("core_ui:index")
 
+    if request.method == "POST":
         display_name = request.POST.get("display_name")
         category = request.POST.get("category", "other")
         document_number = request.POST.get("document_number", "")
@@ -105,8 +105,8 @@ def become_host_view(request):
                 status=KYCDocument.Status.PENDING
             )
             
-            # 3. Kirim ke AI (Groq) untuk Verifikasi
-            verify_kyc_with_groq(kyc_doc.id)
+            # 3. Kirim ke AI (OpenRouter) untuk Verifikasi
+            verify_kyc_with_openrouter(kyc_doc.id)
             
             return redirect("core_ui:index")
             
@@ -116,11 +116,20 @@ def become_host_view(request):
 def verify_kyc_view(request):
     """View untuk User Biasa (Klien) mengunggah KYC agar bisa mem-booking Host"""
     from apps.accounts.models import KYCDocument
-    from apps.accounts.services.kyc_ai import verify_kyc_with_groq  # type: ignore
+    from apps.accounts.services.kyc_ai import verify_kyc_with_openrouter  # type: ignore
+    from django.http import JsonResponse
+
+    wants_json = "application/json" in request.headers.get("Accept", "")
 
     # Jika sudah punya KYC yang approved atau pending
     existing_kyc = KYCDocument.objects.filter(user=request.user).order_by('-submitted_at').first()
     if existing_kyc and existing_kyc.status in [KYCDocument.Status.APPROVED, KYCDocument.Status.PENDING]:
+        if wants_json:
+            return JsonResponse({
+                "status": "success",
+                "kyc_status": existing_kyc.status,
+                "message": f"Status KYC Anda saat ini: {existing_kyc.get_status_display()}"
+            })
         messages.info(request, f"Status KYC Anda saat ini: {existing_kyc.get_status_display()}")  # type: ignore
         return redirect("core_ui:index")
 
@@ -142,8 +151,12 @@ def verify_kyc_view(request):
                 selfie_file=selfie_file,
                 status=KYCDocument.Status.PENDING
             )
-            # Kirim ke AI Groq
-            verify_kyc_with_groq(kyc_doc.id)
+            # Kirim ke AI OpenRouter
+            verify_kyc_with_openrouter(kyc_doc.id)
+            
+            if wants_json:
+                return JsonResponse({"status": "success", "message": "Dokumen KYC berhasil dikirim dan sedang diproses oleh AI kami!"})
+            
             messages.success(request, "Dokumen KYC berhasil dikirim dan sedang diproses oleh AI kami!")
             
             # Kembali ke halaman sebelumnya jika ada parameter 'next'
@@ -151,13 +164,23 @@ def verify_kyc_view(request):
             if next_url:
                 return redirect(next_url)
             return redirect("core_ui:index")
+        elif wants_json:
+            return JsonResponse({"status": "error", "message": "Harap lengkapi semua data dan unggah dokumen."}, status=400)
 
+    if wants_json:
+        return JsonResponse({"status": "idle", "kyc_status": "none"})
+        
     return render(request, "core/verify_kyc.html")
 
 @login_required
 def edit_creator_profile_view(request):
     """View untuk mengedit profil Host/Creator"""
+    from django.http import JsonResponse
+    wants_json = "application/json" in request.headers.get("Accept", "")
+
     if not request.user.is_creator:
+        if wants_json:
+            return JsonResponse({"status": "error", "message": "Hanya Host yang dapat mengedit profil kreator."}, status=403)
         messages.error(request, "Hanya Host yang dapat mengedit profil kreator.")
         return redirect("core_ui:index")
         
@@ -167,6 +190,7 @@ def edit_creator_profile_view(request):
         profile.display_name = request.POST.get("display_name", profile.display_name)
         profile.category = request.POST.get("category", profile.category)
         profile.subscription_price = request.POST.get("subscription_price", profile.subscription_price)
+        profile.chat_price = request.POST.get("chat_price", profile.chat_price)
         profile.website = request.POST.get("website", profile.website)
         profile.subscription_rules = request.POST.get("subscription_rules", profile.subscription_rules)
         
@@ -178,7 +202,8 @@ def edit_creator_profile_view(request):
                 if 20 <= rate <= 50:
                     profile.platform_commission_rate = rate
                 else:
-                    messages.warning(request, "Komisi platform harus antara 20% hingga 50%.")
+                    if not wants_json:
+                        messages.warning(request, "Komisi platform harus antara 20% hingga 50%.")
             except:
                 pass
         
@@ -186,52 +211,142 @@ def edit_creator_profile_view(request):
             profile.cover_image = request.FILES["cover_image"]
             
         profile.save()
+        if wants_json:
+            return JsonResponse({"status": "success", "message": "Profil berhasil diperbarui!"})
         messages.success(request, "Profil berhasil diperbarui!")
         return redirect("core_ui:creator_profile", username=request.user.username)
         
     from apps.accounts.models import CreatorProfile
+    if wants_json:
+        return JsonResponse({
+            "profile": {
+                "display_name": profile.display_name,
+                "category": profile.category,
+                "subscription_price": str(profile.subscription_price),
+                "chat_price": str(profile.chat_price),
+                "website": profile.website,
+                "subscription_rules": profile.subscription_rules,
+                "platform_commission_rate": str(profile.platform_commission_rate),
+                "cover_image_url": profile.cover_image.url if profile.cover_image else None
+            },
+            "categories": [{"id": c[0], "name": c[1]} for c in CreatorProfile.Category.choices]
+        })
+
     return render(request, "creator/profile_edit.html", {
         "profile": profile,
         "categories": CreatorProfile.Category.choices
     })
 
 def creator_profile_view(request, username):
-    """View untuk melihat profil kreator dan Subscribe"""
-    creator_user = get_object_or_404(User, username=username, role=User.Role.HOST)
-    profile = get_object_or_404(CreatorProfile, user=creator_user)
-    tiers = SubscriptionTier.objects.filter(creator=creator_user, is_active=True).order_by('sort_order')
-    is_subscribed = Subscription.objects.filter(subscriber=request.user, tier__creator=creator_user, status='active').exists()
+    """View untuk melihat profil publik (Kreator/Host atau User Biasa)"""
+    from django.http import JsonResponse
+    import json
     
-    # Ambil galeri portfolio publik host
-    from apps.accounts.models import CreatorPhoto
-    portfolio_photos = CreatorPhoto.objects.filter(profile=profile)
+    wants_json = "application/json" in request.headers.get("Accept", "")
     
-    # Rating System (VIP/Premium)
-    avg_rating = creator_user.get_avg_rating_as_host()
-    has_rating_package = False
-    if request.user.is_authenticated and hasattr(request.user, 'rating_access'):
-        has_rating_package = request.user.rating_access.is_active
+    # 1. Dapatkan user (Bebas apakah Host atau User)
+    target_user = get_object_or_404(User, username=username)
     
-    if request.method == "POST" and "subscribe" in request.POST:
-        tier_id = request.POST.get("tier_id")
-        tier = get_object_or_404(SubscriptionTier, id=tier_id)
+    # 2. Ambil CreatorProfile jika ada
+    profile = getattr(target_user, 'creator_profile', None)
+    
+    # 3. Data tambahan khusus Host
+    tiers = None
+    is_subscribed = False
+    portfolio_photos = []
+    avg_rating = 0
+    
+    if profile:
+        tiers = SubscriptionTier.objects.filter(creator=target_user, is_active=True).order_by('sort_order')
+        if request.user.is_authenticated:
+            is_subscribed = Subscription.objects.filter(subscriber=request.user, tier__creator=target_user, status='active').exists()
+            
+        from apps.accounts.models import CreatorPhoto
+        portfolio_photos = CreatorPhoto.objects.filter(profile=profile)
+        avg_rating = target_user.get_avg_rating_as_host()
         
-        # Subscribe
-        Subscription.objects.create(
-            subscriber=request.user,
-            tier=tier,
-            status='active'
-        )
-        return redirect("core_ui:creator_profile", username=username)
+    # Rating Package Access
+    has_rating_package = False
+    has_chat_access = False
+    if request.user.is_authenticated:
+        if hasattr(request.user, 'rating_access'):
+            has_rating_package = request.user.rating_access.is_active
+            
+        from apps.subscriptions.models import ChatAccess
+        has_chat_access = is_subscribed or ChatAccess.objects.filter(host=target_user, user=request.user).exists()
+    
+    if request.method == "POST":
+        data = request.POST
+        if wants_json and request.content_type == "application/json":
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                pass
+                
+        if "subscribe" in data or data.get("action") == "subscribe":
+            if not profile:
+                if wants_json:
+                    return JsonResponse({"status": "error", "message": "Pengguna ini bukan Host."}, status=400)
+                messages.error(request, "Pengguna ini bukan Host.")
+                return redirect("core_ui:creator_profile", username=username)
+                
+            tier_id = data.get("tier_id")
+            tier = get_object_or_404(SubscriptionTier, id=tier_id)
+            
+            # Simple check if balance is enough (assume subscription deducts balance later or here if needed)
+            # For now, just create the subscription
+            Subscription.objects.create(
+                subscriber=request.user,
+                tier=tier,
+                status='active'
+            )
+            
+            if wants_json:
+                return JsonResponse({"status": "success", "message": f"Berhasil berlangganan ke {target_user.username}"})
+            return redirect("core_ui:creator_profile", username=username)
+
+    if wants_json:
+        return JsonResponse({
+            "creator": {
+                "id": target_user.id,
+                "username": target_user.username,
+                "role": target_user.role,
+                "avatar_url": target_user.avatar.url if hasattr(target_user, 'avatar') and target_user.avatar else None
+            },
+            "profile": {
+                "display_name": profile.display_name if profile else None,
+                "category": profile.get_category_display() if profile else None,
+                "bio": profile.bio if profile and hasattr(profile, 'bio') else None,
+                "cover_image_url": profile.cover_image.url if profile and profile.cover_image else None,
+                "subscription_rules": profile.subscription_rules if profile else None,
+                "website": profile.website if profile else None,
+                "chat_price": str(profile.chat_price) if profile else "0"
+            } if profile else None,
+            "tiers": [{
+                "id": t.id,
+                "name": t.name,
+                "price": str(t.price),
+                "description": t.description
+            } for t in tiers] if tiers else [],
+            "portfolio_photos": [{
+                "id": p.id,
+                "url": p.image.url
+            } for p in portfolio_photos] if portfolio_photos else [],
+            "is_subscribed": is_subscribed,
+            "avg_rating": avg_rating,
+            "has_rating_package": has_rating_package,
+            "has_chat_access": has_chat_access
+        })
 
     return render(request, "creator/profile.html", {
-        "creator": creator_user,
+        "creator": target_user,
         "profile": profile,
         "tiers": tiers,
         "is_subscribed": is_subscribed,
         "portfolio_photos": portfolio_photos,
         "avg_rating": avg_rating,
-        "has_rating_package": has_rating_package
+        "has_rating_package": has_rating_package,
+        "has_chat_access": has_chat_access
     })
 
 @login_required
@@ -239,7 +354,14 @@ def manage_subscription_tiers_view(request):
     """
     Halaman bagi Host untuk mengatur 4 Slot Paket Berlangganan mereka.
     """
+    from django.http import JsonResponse
+    import json
+    
+    wants_json = "application/json" in request.headers.get("Accept", "")
+    
     if request.user.role != User.Role.HOST:
+        if wants_json:
+            return JsonResponse({"status": "error", "message": "Akses ditolak. Anda bukan Host."}, status=403)
         messages.error(request, "Akses ditolak. Anda bukan Host.")
         return redirect("core_ui:index")
         
@@ -257,33 +379,54 @@ def manage_subscription_tiers_view(request):
         tiers.append(new_tier)
         
     if request.method == "POST":
+        data = request.POST
+        if wants_json and request.content_type == "application/json":
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                pass
+                
         for index, tier in enumerate(tiers):
             tier_id_str = str(tier.id)
             name_key = f"name_{tier_id_str}"
             price_key = f"price_{tier_id_str}"
             desc_key = f"desc_{tier_id_str}"
             
-            if name_key in request.POST:
-                tier.name = request.POST.get(name_key)
+            if name_key in data:
+                tier.name = data.get(name_key)
                 
                 # Handling empty price safely
-                price_val = request.POST.get(price_key)
-                if price_val:
+                price_val = data.get(price_key)
+                if price_val is not None and price_val != "":
                     try:
                         tier.price = float(price_val)
                     except ValueError:
                         pass
                         
-                tier.description = request.POST.get(desc_key, "")
+                tier.description = data.get(desc_key, "")
                 tier.save()
                 
         # Simpan Subscription Rules
-        if "subscription_rules" in request.POST:
-            profile.subscription_rules = request.POST.get("subscription_rules")
+        if "subscription_rules" in data:
+            profile.subscription_rules = data.get("subscription_rules")
             profile.save()
                 
+        if wants_json:
+            return JsonResponse({"status": "success", "message": "Paket Langganan & Peraturan Anda berhasil diperbarui."})
         messages.success(request, "Paket Langganan & Peraturan Anda berhasil diperbarui.")
         return redirect("core_ui:manage_tiers")
+        
+    if wants_json:
+        return JsonResponse({
+            "tiers": [{
+                "id": t.id,
+                "name": t.name,
+                "price": str(t.price),
+                "description": t.description,
+                "sort_order": t.sort_order
+            } for t in tiers],
+            "subscription_rules": profile.subscription_rules
+        })
         
     return render(request, "core/manage_tiers.html", {
         "tiers": tiers,
@@ -317,7 +460,9 @@ def family_portal_view(request):
                 return redirect("core_ui:family_portal")
             
             # Validasi Harga & Syarat
+            # pyrefly: ignore [missing-import]
             from apps.subscriptions.models import Subscription
+            # pyrefly: ignore [missing-import]
             from apps.payments.models import WalletTransaction
             from decimal import Decimal
             
@@ -417,9 +562,35 @@ def user_wallet_view(request):
     Menampilkan Saldo 3 Mata Uang dan Riwayat Transaksi.
     """
     from apps.payments.models import WalletTransaction
+    from django.http import JsonResponse
     
     # Ambil 20 transaksi terakhir milik user ini
     transactions = WalletTransaction.objects.filter(user=request.user).order_by("-created_at")[:20]
+    
+    if "application/json" in request.headers.get("Accept", ""):
+        tx_data = [{
+            "id": tx.id,
+            "type": tx.transaction_type,
+            "type_display": tx.get_transaction_type_display(),
+            "amount": str(tx.amount),
+            "currency": tx.currency,
+            "status": tx.status,
+            "status_display": tx.get_status_display(),
+            "notes": tx.notes,
+            "created_at": tx.created_at.isoformat()
+        } for tx in transactions]
+        
+        return JsonResponse({
+            "balances": {
+                "IDR": str(request.user.balance_idr),
+                "USD": str(request.user.balance_usd),
+                "SGD": str(request.user.balance_sgd),
+                "MYR": str(request.user.balance_myr),
+                "CNY": str(request.user.balance_cny)
+            },
+            "is_creator": request.user.is_creator,
+            "transactions": tx_data
+        })
     
     return render(request, "wallet/detail.html", {
         "user": request.user,
@@ -433,7 +604,12 @@ def user_wallet_convert_view(request):
     Sistem Auto-Convert Wallet: Mengonversi semua mata uang asing ke IDR.
     Mengambil spread profit 1.5% untuk platform.
     """
+    from django.http import JsonResponse
+    wants_json = "application/json" in request.headers.get("Accept", "")
+
     if request.user.role != 'host':
+        if wants_json:
+            return JsonResponse({"status": "error", "message": "Fitur konversi ini khusus untuk Host."}, status=403)
         messages.error(request, "Fitur konversi ini khusus untuk Host.")
         return redirect("core_ui:user_wallet")
         
@@ -493,10 +669,17 @@ def user_wallet_convert_view(request):
                 status=WalletTransaction.Status.COMPLETED,
                 notes=f"Auto-Convert: {notes_str}"
             )
-            messages.success(request, f"Konversi berhasil! Total IDR yang ditambahkan: {total_converted_idr:,.2f}.")
+            msg = f"Konversi berhasil! Total IDR yang ditambahkan: {total_converted_idr:,.2f}."
+            if wants_json:
+                return JsonResponse({"status": "success", "message": msg, "converted_amount": str(total_converted_idr)})
+            messages.success(request, msg)
         else:
+            if wants_json:
+                return JsonResponse({"status": "error", "message": "Tidak ada saldo asing untuk dikonversi."}, status=400)
             messages.warning(request, "Tidak ada saldo asing untuk dikonversi.")
             
+    if wants_json:
+        return JsonResponse({"status": "success"})
     return redirect("core_ui:user_wallet")
 
 @login_required
@@ -504,10 +687,22 @@ def user_wallet_action_view(request):
     """
     Memproses request Deposit dan Withdrawal dari Dasbor Dompet.
     """
+    from django.http import JsonResponse
+    import json
+    
+    wants_json = "application/json" in request.headers.get("Accept", "")
+    
     if request.method == "POST":
-        action = request.POST.get("action")
-        amount_str = request.POST.get("amount", "0")
-        currency = request.POST.get("currency", "USD")
+        data = request.POST
+        if wants_json and request.content_type == "application/json":
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                pass
+                
+        action = data.get("action")
+        amount_str = data.get("amount", "0")
+        currency = data.get("currency", "USD")
         
         try:
             from decimal import Decimal
@@ -515,6 +710,8 @@ def user_wallet_action_view(request):
             if amount <= 0:
                 raise ValueError("Jumlah harus lebih dari 0")
         except:
+            if wants_json:
+                return JsonResponse({"status": "error", "message": "Jumlah tidak valid."}, status=400)
             messages.error(request, "Jumlah tidak valid.")
             return redirect("core_ui:user_wallet")
             
@@ -522,11 +719,15 @@ def user_wallet_action_view(request):
         from apps.payments.models import WalletTransaction
         
         if action == "deposit":
+            if wants_json:
+                return JsonResponse({"status": "error", "message": "Deposit manual telah dinonaktifkan karena alasan keamanan. Silakan gunakan integrasi PayPal untuk Top-Up Saldo."}, status=400)
             messages.error(request, "Deposit manual telah dinonaktifkan karena alasan keamanan. Silakan gunakan integrasi PayPal untuk Top-Up Saldo.")
             return redirect("core_ui:user_wallet")
             
         elif action == "withdraw":
             if not user.is_creator:
+                if wants_json:
+                    return JsonResponse({"status": "error", "message": "Hanya Host/Creator yang diizinkan menarik dana."}, status=403)
                 messages.error(request, "Hanya Host/Creator yang diizinkan menarik dana.")
                 return redirect("core_ui:user_wallet")
                 
@@ -543,6 +744,8 @@ def user_wallet_action_view(request):
                 sufficient = True
                 
             if not sufficient:
+                if wants_json:
+                    return JsonResponse({"status": "error", "message": f"Saldo {currency} Anda tidak mencukupi untuk penarikan ini."}, status=400)
                 messages.error(request, f"Saldo {currency} Anda tidak mencukupi untuk penarikan ini.")
                 return redirect("core_ui:user_wallet")
                 
@@ -555,8 +758,13 @@ def user_wallet_action_view(request):
                 status=WalletTransaction.Status.PENDING,
                 notes="Permintaan Penarikan (Menunggu verifikasi admin)"
             )
-            messages.success(request, f"Permintaan penarikan {currency} {amount:,.2f} sedang diproses.")
+            msg = f"Permintaan penarikan {currency} {amount:,.2f} sedang diproses."
+            if wants_json:
+                return JsonResponse({"status": "success", "message": msg})
+            messages.success(request, msg)
             
+    if wants_json:
+        return JsonResponse({"status": "error", "message": "Invalid method"}, status=405)
     return redirect("core_ui:user_wallet")
 
 @login_required
@@ -731,24 +939,44 @@ def chat_inbox_view(request):
     from apps.subscriptions.models import Subscription
     from apps.accounts.models import User
     from django.db.models import Q
-    
+    from django.http import JsonResponse
+
+    wants_json = "application/json" in request.headers.get("Accept", "")
+
     # Ambil daftar Host/Fan yang pernah berinteraksi dengan user ini
     if request.user.role == User.Role.HOST:
         # Jika Host, tampilkan Fan yang subscribe ATAU booking ke dia
-        contacts = User.objects.filter(
-            Q(host_bookings_made__host=request.user) | 
-            Q(subscriptions__tier__creator=request.user)
-        ).exclude(id=request.user.id).distinct()
+        contacts = (
+            User.objects.filter(
+                Q(host_bookings_made__host=request.user)
+                | Q(subscriptions__tier__creator=request.user)
+            )
+            .exclude(id=request.user.id)
+            .distinct()
+        )
     else:
         # Jika Fans, tampilkan host yang disubscribe ATAU di-booking
-        contacts = User.objects.filter(
-            Q(host_bookings_received__user=request.user) | 
-            Q(subscription_tiers__subscriptions__subscriber=request.user)
-        ).exclude(id=request.user.id).distinct()
-        
-    return render(request, "core/chat_inbox.html", {
-        "contacts": contacts
-    })
+        contacts = (
+            User.objects.filter(
+                Q(host_bookings_received__user=request.user)
+                | Q(subscription_tiers__subscriptions__subscriber=request.user)
+            )
+            .exclude(id=request.user.id)
+            .distinct()
+        )
+
+    if wants_json:
+        return JsonResponse({
+            "contacts": [{
+                "id": c.id,
+                "username": c.username,
+                "role": c.role,
+                "avatar_url": c.avatar.url if c.avatar else None,
+                "display_name": c.creator_profile.display_name if hasattr(c, 'creator_profile') and c.creator_profile else c.username
+            } for c in contacts]
+        })
+
+    return render(request, "core/chat_inbox.html", {"contacts": contacts})
 
 @login_required
 def chat_detail_view(request, username):
@@ -757,35 +985,78 @@ def chat_detail_view(request, username):
     Harus memvalidasi apakah ada Subscription yang aktif di antara keduanya.
     """
     from apps.accounts.models import User
-    from apps.subscriptions.models import Subscription
-    
+    from apps.subscriptions.models import Subscription, ChatAccess
+    from django.http import JsonResponse
+
+    wants_json = "application/json" in request.headers.get("Accept", "")
+
     other_user = get_object_or_404(User, username=username)
-    
-    # Validasi Subscription
+
+    # Validasi Subscription atau ChatAccess
     has_access = False
+
+    # Cek jika chat gratis
+    is_free = False
+    target_profile = getattr(other_user, 'creator_profile', None) if request.user.role != User.Role.HOST else getattr(request.user, 'creator_profile', None)
+    
+    price_to_pay = target_profile.chat_price if target_profile else 0
+    if price_to_pay == 0:
+        is_free = True
+
     if request.user.role == User.Role.HOST:
-        has_access = Subscription.objects.filter(creator=request.user, subscriber=other_user, is_active=True).exists()
+        # Host selalu bisa nge-chat user yang subscribe ke dia ATAU yang udah beli ChatAccess ke dia
+        has_sub = Subscription.objects.filter(creator=request.user, subscriber=other_user, is_active=True).exists()
+        has_chat_access = ChatAccess.objects.filter(host=request.user, user=other_user).exists()
+        has_access = has_sub or has_chat_access or is_free
     else:
-        has_access = Subscription.objects.filter(creator=other_user, subscriber=request.user, is_active=True).exists()
+        # User biasa mengecek apakah dia subscribe host, ATAU dia udah beli ChatAccess
+        has_sub = Subscription.objects.filter(creator=other_user, subscriber=request.user, is_active=True).exists()
+        has_chat_access = ChatAccess.objects.filter(host=other_user, user=request.user).exists()
+        has_access = has_sub or has_chat_access or is_free
         
-    # Jika sesama Host atau tidak berlangganan, tolak. (Opsional: sesama Host bisa chat jika mereka berteman di Family)
-    # Untuk MVP, pastikan ada subscription
+    # Bypass validasi untuk Admin/Superadmin
+    if request.user.is_superuser or request.user.role in [User.Role.ADMIN, User.Role.SUPERADMIN]:
+        has_access = True
+        
     if not has_access:
-        messages.error(request, f"Anda harus berlangganan (Subscribe) ke {other_user.username} untuk mengirim pesan pribadi.")
+        if wants_json:
+            return JsonResponse({
+                "status": "error",
+                "message": "Akses Terkunci",
+                "reason": "payment_required",
+                "price": str(price_to_pay)
+            }, status=403)
+        messages.error(request, f"Anda harus berlangganan (Subscribe) atau membeli Akses Chat ke {other_user.username} untuk mengirim pesan pribadi.")
         return redirect("core_ui:creator_profile", username=username)
+        
+    # Tandai jika ini chat dari admin ke host
+    is_admin_chat = False
+    if request.user.is_superuser or request.user.role in [User.Role.ADMIN, User.Role.SUPERADMIN]:
+        if other_user.role == User.Role.HOST:
+            is_admin_chat = True
         
     # Generate JWT Token untuk WebSocket Go
     from rest_framework_simplejwt.tokens import AccessToken
     token = AccessToken.for_user(request.user)
     
-    # Room ID: Buat unique string dari dua ID (diurutkan agar konsisten)
-    # Go Chat Service menerima ID apa saja, tapi standar UUID lebih baik.
-    # Namun chat-service /api/v1/rooms menangani pembuatan ruangan.
-    # Kita serahkan ke frontend untuk membuat room via REST API Go atau mengirimnya.
+    if wants_json:
+        return JsonResponse({
+            "status": "success",
+            "chat_token": str(token),
+            "other_user": {
+                "id": other_user.id,
+                "username": other_user.username,
+                "role": other_user.role,
+                "avatar_url": other_user.avatar.url if other_user.avatar else None,
+                "display_name": other_user.creator_profile.display_name if hasattr(other_user, 'creator_profile') and other_user.creator_profile else other_user.username
+            },
+            "is_admin_chat": is_admin_chat
+        })
     
     return render(request, "core/chat_detail.html", {
         "other_user": other_user,
         "chat_token": str(token),
+        "is_admin_chat": is_admin_chat
     })
 
 @login_required
@@ -795,6 +1066,13 @@ def user_topup_view(request):
     Mendukung integrasi langsung ke Gateway PayPal.
     """
     from django.conf import settings
+    from django.http import JsonResponse
+    
+    if "application/json" in request.headers.get("Accept", ""):
+        return JsonResponse({
+            "paypal_client_id": getattr(settings, "PAYPAL_CLIENT_ID", "test")
+        })
+        
     return render(request, "wallet/topup.html", {
         "paypal_client_id": getattr(settings, "PAYPAL_CLIENT_ID", "test")
     })
@@ -805,10 +1083,22 @@ def user_topup_action_view(request):
     Memproses Top-Up untuk metode non-PayPal (seperti Transfer Bank/E-Wallet).
     Mencatat transaksi berstatus Pending hingga dikonfirmasi admin.
     """
+    from django.http import JsonResponse
+    import json
+    
+    wants_json = "application/json" in request.headers.get("Accept", "")
+    
     if request.method == "POST":
-        amount_str = request.POST.get("amount", "0")
-        currency = request.POST.get("currency", "USD")
-        method = request.POST.get("method", "Transfer Bank")
+        data = request.POST
+        if wants_json and request.content_type == "application/json":
+            try:
+                data = json.loads(request.body)
+            except json.JSONDecodeError:
+                pass
+                
+        amount_str = data.get("amount", "0")
+        currency = data.get("currency", "USD")
+        method = data.get("method", "Transfer Bank")
         
         try:
             from decimal import Decimal
@@ -816,16 +1106,19 @@ def user_topup_action_view(request):
             if amount <= 0:
                 raise ValueError("Jumlah harus positif.")
         except Exception:
+            if wants_json:
+                return JsonResponse({"status": "error", "message": "Nominal tidak valid."}, status=400)
             messages.error(request, "Nominal tidak valid.")
             return redirect("core_ui:user_topup")
             
         user = request.user
+        # pyrefly: ignore [missing-import]
         from apps.payments.models import WalletTransaction
         
         # Untuk metode manual (Crypto / Transfer), statusnya PENDING
         # Saldo dompet TIDAK BOLEH ditambah sampai transaksi berstatus COMPLETED
         
-        tx_hash = request.POST.get("tx_hash", "").strip()
+        tx_hash = data.get("tx_hash", "").strip()
         notes = f"Top-Up via {method} (Menunggu Konfirmasi)"
         if tx_hash:
             notes += f" | TxHash: {tx_hash}"
@@ -839,9 +1132,14 @@ def user_topup_action_view(request):
             notes=notes
         )
         
-        messages.success(request, f"Permintaan Top-Up {currency} {amount:,.2f} via {method} sedang diproses. Harap tunggu verifikasi Admin.")
+        msg = f"Permintaan Top-Up {currency} {amount:,.2f} via {method} sedang diproses. Harap tunggu verifikasi Admin."
+        if wants_json:
+            return JsonResponse({"status": "success", "message": msg})
+        messages.success(request, msg)
         return redirect("core_ui:user_wallet")
         
+    if wants_json:
+        return JsonResponse({"status": "error", "message": "Invalid method"}, status=405)
     return redirect("core_ui:user_topup")
 
 @login_required
@@ -994,15 +1292,92 @@ def htmx_notification_read(request, id):
 @login_required
 def htmx_feed_posts(request):
     """
-    Mengembalikan potongan HTML daftar postingan untuk infinite scroll HTMX.
+    Mengembalikan potongan HTML daftar postingan untuk infinite scroll HTMX,
+    atau JsonResponse jika Accept Header adalah application/json.
     """
-    page_number = request.GET.get('page', 2)
+    from apps.content.models import Post, Like, PostUnlock
+    from apps.subscriptions.models import Subscription
+    from django.core.paginator import Paginator
+    from django.http import JsonResponse
+
+    wants_json = "application/json" in request.headers.get("Accept", "")
+
+    page_number = request.GET.get('page', 1)
     post_list = Post.objects.filter(is_published=True).select_related('creator')
-    paginator = Paginator(post_list, 5)
+    paginator = Paginator(post_list, 10)
     page_obj = paginator.get_page(page_number)
     
     liked_post_ids = Like.objects.filter(user=request.user, is_unlike=False).values_list('post_id', flat=True)
+    unlocked_post_ids = PostUnlock.objects.filter(user=request.user).values_list('post_id', flat=True)
     
+    if wants_json:
+        # Pre-calculate active subscriptions to fast-check premium access
+        # Admin or Superadmin ignores paywalls
+        is_admin = request.user.is_superuser or request.user.role in ['admin', 'superadmin']
+        
+        subscribed_host_ids = []
+        if not is_admin:
+            subscribed_host_ids = Subscription.objects.filter(
+                subscriber=request.user, is_active=True
+            ).values_list('creator_id', flat=True)
+
+        data = []
+        for p in page_obj:
+            # Akses dasar: Admin atau pemilik post
+            has_access = is_admin or (request.user == p.creator)
+            is_ppv = p.price_override and p.price_override > 0
+            
+            if not has_access:
+                if is_ppv:
+                    # Locked by PPV (Pay-per-view)
+                    has_access = p.id in unlocked_post_ids
+                elif p.is_premium:
+                    # Locked by Subscription
+                    has_access = p.creator_id in subscribed_host_ids
+                else:
+                    # Public
+                    has_access = True
+            
+            post_data = {
+                "id": str(p.id),
+                "creator": {
+                    "id": p.creator.id,
+                    "username": p.creator.username,
+                    "display_name": getattr(p.creator, 'creator_profile', None).display_name if hasattr(p.creator, 'creator_profile') else p.creator.username,
+                    "avatar_url": p.creator.avatar.url if p.creator.avatar else None,
+                },
+                "content_type": p.content_type,
+                "title": p.title,
+                "is_premium": p.is_premium,
+                "is_ppv": bool(is_ppv),
+                "price": str(p.price_override) if is_ppv else "0",
+                "like_count": p.like_count,
+                "comment_count": p.comment_count,
+                "created_at": p.created_at.isoformat(),
+                "is_liked": p.id in liked_post_ids,
+                "has_access": has_access
+            }
+            
+            # Mask content if no access
+            if not has_access:
+                post_data["body"] = p.body[:50] + "..." if p.body else ""
+                post_data["media_url"] = None
+                post_data["media_file_url"] = None
+                post_data["thumbnail_url"] = request.build_absolute_uri(p.thumbnail.url) if p.thumbnail else None
+            else:
+                post_data["body"] = p.body
+                post_data["media_url"] = p.media_url
+                post_data["media_file_url"] = request.build_absolute_uri(p.media_file.url) if p.media_file else None
+                post_data["thumbnail_url"] = request.build_absolute_uri(p.thumbnail.url) if p.thumbnail else None
+                
+            data.append(post_data)
+            
+        return JsonResponse({
+            "posts": data,
+            "has_next": page_obj.has_next(),
+            "total_pages": paginator.num_pages
+        })
+
     return render(request, "components/_feed_posts.html", {
         "posts": page_obj,
         "liked_post_ids": liked_post_ids
@@ -1011,10 +1386,15 @@ def htmx_feed_posts(request):
 @login_required
 def htmx_like_post(request, post_id):
     """
-    Menandai/mencabut Like pada postingan via HTMX. Mengembalikan tombol Like partial.
+    Menandai/mencabut Like pada postingan via HTMX atau API JSON.
     """
+    from apps.content.models import Post, Like
+    from django.http import JsonResponse
+
+    wants_json = "application/json" in request.headers.get("Accept", "")
+
     if request.method == "POST":
-        post = Post.objects.get(id=post_id)
+        post = get_object_or_404(Post, id=post_id)
         like, created = Like.objects.get_or_create(user=request.user, post=post)
         
         if not created:
@@ -1035,7 +1415,311 @@ def htmx_like_post(request, post_id):
             post.save(update_fields=['like_count'])
             
         is_liked = not like.is_unlike
+        
+        if wants_json:
+            return JsonResponse({
+                "status": "success",
+                "is_liked": is_liked,
+                "like_count": post.like_count
+            })
+
         return render(request, "components/_post_like_button.html", {
             "post": post,
             "is_liked": is_liked
         })
+        
+    if wants_json:
+        return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
+    return redirect("core_ui:index")
+
+@login_required
+@require_POST
+def create_post_view(request):
+    """
+    Endpoint JSON untuk membuat postingan baru (Feed)
+    """
+    from apps.content.models import Post
+    from django.http import JsonResponse
+    import json
+    from decimal import Decimal
+
+    if request.user.role != 'host':
+        return JsonResponse({"error": "Hanya host yang bisa membuat postingan"}, status=403)
+        
+    try:
+        # Menangani form multipart/form-data
+        title = request.POST.get('title', '')
+        body = request.POST.get('body', '')
+        is_premium = request.POST.get('is_premium', 'false').lower() == 'true'
+        price_override_str = request.POST.get('price_override', '0')
+        price_override = Decimal(price_override_str) if price_override_str else None
+        
+        media_file = request.FILES.get('media_file')
+        
+        # Deteksi tipe konten
+        content_type = Post.ContentType.TEXT
+        if media_file:
+            if media_file.content_type.startswith('video/'):
+                content_type = Post.ContentType.VIDEO
+            elif media_file.content_type.startswith('image/'):
+                content_type = Post.ContentType.IMAGE
+                
+        post = Post(
+            creator=request.user,
+            title=title,
+            body=body,
+            is_premium=is_premium,
+            price_override=price_override if price_override and price_override > 0 else None,
+            content_type=content_type,
+            is_published=True
+        )
+        
+        if media_file:
+            post.media_file = media_file
+            
+        post.save()
+        
+        return JsonResponse({"status": "success", "message": "Postingan berhasil dibuat", "post_id": str(post.id)})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=400)
+
+
+@login_required
+@require_POST
+def buy_post_view(request, post_id):
+    """
+    Endpoint JSON untuk membeli postingan Pay-Per-View (PPV)
+    """
+    from apps.content.models import Post, PostUnlock
+    from apps.payments.models import WalletTransaction
+    from django.db import transaction
+    from django.http import JsonResponse
+
+    post = get_object_or_404(Post, id=post_id)
+    
+    if not post.price_override or post.price_override <= 0:
+        return JsonResponse({"error": "Post ini tidak tersedia untuk dibeli satuan."}, status=400)
+        
+    if PostUnlock.objects.filter(post=post, user=request.user).exists():
+        return JsonResponse({"status": "success", "message": "Anda sudah membeli postingan ini."})
+        
+    price = post.price_override
+    user = request.user
+    target_user = post.creator
+    
+    profile = getattr(target_user, 'creator_profile', None)
+    commission_rate = profile.platform_commission_rate if profile else 20
+    
+    with transaction.atomic():
+        if user.balance_idr < price:
+            return JsonResponse({"error": f"Saldo IDR Anda tidak mencukupi (Butuh {price})."}, status=402)
+            
+        # Potong saldo pembeli
+        user.balance_idr -= price
+        user.save()
+        
+        # Tambah saldo host
+        commission = price * (commission_rate / 100)
+        net_price = price - commission
+        target_user.balance_idr += net_price
+        target_user.save()
+        
+        # Buat transaksi pembeli
+        WalletTransaction.objects.create(
+            user=user, transaction_type=WalletTransaction.TransactionType.SUBSCRIPTION,
+            amount=price, currency='IDR', status=WalletTransaction.Status.COMPLETED,
+            notes=f'Membeli Postingan PPV dari {target_user.username}'
+        )
+        # Buat transaksi host
+        WalletTransaction.objects.create(
+            user=target_user, transaction_type=WalletTransaction.TransactionType.EARNING,
+            amount=net_price, currency='IDR', status=WalletTransaction.Status.COMPLETED,
+            notes=f'Penjualan Postingan PPV ke {user.username}'
+        )
+        
+        # Catat pembukaan (Unlock)
+        PostUnlock.objects.create(post=post, user=user, price_paid=price)
+        
+    return JsonResponse({"status": "success", "message": "Berhasil membeli postingan PPV!"})
+
+@login_required
+@require_POST
+def buy_chat_access_view(request, username):
+    from apps.accounts.models import User
+    from apps.subscriptions.models import ChatAccess
+    from apps.payments.models import WalletTransaction
+    from django.db import transaction
+    from django.http import JsonResponse
+
+    wants_json = "application/json" in request.headers.get("Accept", "")
+
+    target_user = get_object_or_404(User, username=username)
+    profile = getattr(target_user, 'creator_profile', None)
+
+    if not profile or profile.chat_price <= 0:
+        if wants_json:
+            return JsonResponse({"status": "error", "message": "Host ini tidak memungut biaya chat atau bukan host."}, status=400)
+        messages.error(request, 'Host ini tidak memungut biaya chat atau bukan host.')
+        return redirect('core_ui:creator_profile', username=username)
+
+    price = profile.chat_price
+    user = request.user
+
+    if ChatAccess.objects.filter(user=user, host=target_user).exists():
+        if wants_json:
+            return JsonResponse({"status": "success", "message": "Anda sudah memiliki akses chat."})
+        messages.info(request, 'Anda sudah memiliki akses chat.')
+        return redirect('core_ui:chat_detail', username=username)
+
+    with transaction.atomic():
+        if user.balance_idr < price:
+            if wants_json:
+                return JsonResponse({"status": "error", "message": f"Saldo IDR Anda tidak mencukupi (Butuh {price})."}, status=402)
+            messages.error(request, f'Saldo IDR Anda tidak mencukupi (Butuh {price}).')
+            return redirect('core_ui:user_wallet')
+
+        # Potong saldo pembeli
+        user.balance_idr -= price
+        user.save()
+
+        # Tambah saldo host (misal dipotong komisi 20%)
+        commission = price * (profile.platform_commission_rate / 100)
+        net_price = price - commission
+        target_user.balance_idr += net_price
+        target_user.save()
+
+        # Buat transaksi pembeli
+        WalletTransaction.objects.create(
+            user=user, transaction_type=WalletTransaction.TransactionType.SUBSCRIPTION,
+            amount=price, currency='IDR', status=WalletTransaction.Status.COMPLETED,
+            notes=f'Membeli Akses Chat ke {target_user.username}'
+        )
+        # Buat transaksi host
+        WalletTransaction.objects.create(
+            user=target_user, transaction_type=WalletTransaction.TransactionType.EARNING,
+            amount=net_price, currency='IDR', status=WalletTransaction.Status.COMPLETED,
+            notes=f'Pendapatan Akses Chat dari {user.username}'
+        )
+
+        # Buat ChatAccess
+        ChatAccess.objects.create(user=user, host=target_user, price_paid=price)
+
+    if wants_json:
+        return JsonResponse({"status": "success", "message": f"Akses chat dengan {target_user.username} terbuka!"})
+    messages.success(request, f'Akses chat dengan {target_user.username} terbuka!')
+    return redirect('core_ui:chat_detail', username=username)
+
+
+from django.http import JsonResponse
+import requests
+
+@login_required
+@require_POST
+def chat_upload_image_view(request, username):
+    try:
+        image_file = request.FILES.get('image')
+        room_id = request.POST.get('room_id')
+        
+        if not image_file or not room_id:
+            return JsonResponse({"error": "Gambar dan Room ID diperlukan."}, status=400)
+            
+        other_user = get_object_or_404(User, username=username)
+        user = request.user
+        
+        # 1. Tentukan Role dan Validasi Biaya
+        is_free = True
+        price_to_pay = 0
+        target_host = None
+        
+        if user.is_superuser or user.role in [User.Role.ADMIN, User.Role.SUPERADMIN]:
+            is_free = True
+        elif user.role == User.Role.HOST:
+            is_free = True
+        else:
+            # User biasa ke Host
+            if other_user.role == User.Role.HOST:
+                target_host = other_user
+                is_free = False
+            else:
+                # User biasa ke User biasa (tidak didukung atau gratis)
+                is_free = True
+                
+        if not is_free and target_host:
+            # Validasi 11 balasan dari host
+            # Panggil Go API untuk mendapatkan riwayat pesan
+            from rest_framework_simplejwt.tokens import AccessToken
+            token = AccessToken.for_user(user)
+            headers = {"Authorization": f"Bearer {token}"}
+            
+            try:
+                # Go Service URL from env or localhost:8081
+                resp = requests.get(f"http://localhost:8081/api/v1/rooms/{room_id}/messages?limit=100", headers=headers, timeout=5)
+                if resp.status_code == 200:
+                    messages = resp.json()
+                    host_reply_count = sum(1 for m in messages if m.get("sender_id") == str(target_host.id))
+                    if host_reply_count < 11:
+                        return JsonResponse({"error": f"Host belum membalas 11 kali. Saat ini baru {host_reply_count} balasan."}, status=403)
+                else:
+                    return JsonResponse({"error": "Gagal memverifikasi riwayat pesan dari server chat."}, status=500)
+            except Exception as e:
+                return JsonResponse({"error": "Sistem chat sedang tidak tersedia."}, status=500)
+                
+            # Validasi Saldo (0.10% dari subscription_price)
+            profile = getattr(target_host, 'creator_profile', None)
+            sub_price = profile.subscription_price if profile else 0
+            
+            # Harga = 0.10% dari sub_price
+            price_to_pay = sub_price * (0.1 / 100)
+            if price_to_pay < 1: 
+                price_to_pay = 1 # Minimal 1 IDR
+                
+            if user.balance_idr < price_to_pay:
+                return JsonResponse({"error": f"Saldo tidak cukup. Butuh IDR {price_to_pay:,.2f}"}, status=402)
+                
+            # Proses Pembayaran
+            from apps.payments.models import WalletTransaction
+            from django.db import transaction
+            
+            with transaction.atomic():
+                user = User.objects.select_for_update().get(id=user.id)
+                target_user = User.objects.select_for_update().get(id=target_host.id)
+                
+                if user.balance_idr < price_to_pay:
+                    return JsonResponse({"error": "Saldo tidak cukup."}, status=402)
+                    
+                user.balance_idr -= price_to_pay
+                user.save()
+                
+                commission = price_to_pay * (profile.platform_commission_rate / 100) if profile else 0
+                net_price = price_to_pay - commission
+                
+                target_user.balance_idr += net_price
+                target_user.save()
+                
+                WalletTransaction.objects.create(
+                    user=user, transaction_type=WalletTransaction.TransactionType.SUBSCRIPTION,
+                    amount=price_to_pay, currency='IDR', status=WalletTransaction.Status.COMPLETED,
+                    notes=f'Biaya Kirim Gambar ke {target_user.username}'
+                )
+                WalletTransaction.objects.create(
+                    user=target_user, transaction_type=WalletTransaction.TransactionType.EARNING,
+                    amount=net_price, currency='IDR', status=WalletTransaction.Status.COMPLETED,
+                    notes=f'Pendapatan Gambar dari {user.username}'
+                )
+                
+        # Simpan gambar
+        from django.core.files.storage import default_storage
+        import os
+        from uuid import uuid4
+        
+        ext = os.path.splitext(image_file.name)[1]
+        filename = f"chat_images/{uuid4()}{ext}"
+        path = default_storage.save(filename, image_file)
+        url = request.build_absolute_uri(default_storage.url(path))
+        
+        return JsonResponse({"url": url})
+        
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"error": str(e)}, status=500)

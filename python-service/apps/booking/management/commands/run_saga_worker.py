@@ -18,7 +18,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **kwargs):
         # Konfigurasi Redis
-        redis_url = getattr(settings, 'CELERY_BROKER_URL', 'redis://localhost:6379/1')
+        redis_url = getattr(settings, 'REDIS_URL', 'redis://localhost:6379/0')
         r = redis.from_url(redis_url, decode_responses=True)
 
         stream_name = 'saga:booking_events'

@@ -38,8 +38,8 @@ func main() {
 	defer redisClient.Close()
 
 	// Initialize services
-	omeSvc := service.NewOMEService(cfg.OMEAPIURL, cfg.OMEAPIAccessToken)
-	streamSvc := service.NewStreamService(redisClient, omeSvc)
+	videoSdkSvc := service.NewVideoSDKService(cfg.VideoSDKToken)
+	streamSvc := service.NewStreamService(redisClient, videoSdkSvc)
 
 	// WebSocket hub for viewer interactions
 	hub := ws.NewHub()
@@ -47,7 +47,7 @@ func main() {
 
 	// Handlers
 	streamHandler := handler.NewStreamHandler(streamSvc)
-	viewerHandler := handler.NewViewerHandler(hub, redisClient)
+	viewerHandler := handler.NewViewerHandler(hub, redisClient, cfg.ModerationAPIURL)
 
 	// Router
 	r := chi.NewRouter()

@@ -86,3 +86,66 @@ func (s *RoomService) FindDirectRoom(ctx context.Context, user1, user2 string) (
 	return &room, err
 }
 
+// Conversation represents a DM conversation with last message preview.
+type Conversation struct {
+	RoomID        string    `json:"room_id"`
+	OtherUserID   string    `json:"other_user_id"`
+	OtherUsername string    `json:"other_username"`
+	LastMessage   string    `json:"last_message"`
+	LastMessageAt time.Time `json:"last_message_at"`
+	UnreadCount   int       `json:"unread_count"`
+}
+
+// GetConversations returns DM conversations for a user with last message preview.
+func (s *RoomService) GetConversations(ctx context.Context, userID string) ([]Conversation, error) {
+	// Get all direct rooms where user is a participant
+	cursor, err := s.collection.Find(ctx, bson.M{
+		"type":         "direct",
+		"participants": userID,
+	})
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var rooms []model.ChatRoom
+	if err := cursor.All(ctx, &rooms); err != nil {
+		return nil, err
+	}
+
+	if rooms == nil {
+		return []Conversation{}, nil
+	}
+
+	conversations := make([]Conversation, 0, len(rooms))
+	for _, room := range rooms {
+		// Find the other user
+		var otherUserID string
+		for _, p := range room.Participants {
+			if p != userID {
+				otherUserID = p
+				break
+			}
+		}
+		if otherUserID == "" {
+			continue
+		}
+
+		conv := Conversation{
+			RoomID:      room.ID,
+			OtherUserID: otherUserID,
+			UnreadCount: 0,
+		}
+
+		// Get last message from the room
+		// The last message is stored in room.LastMessage if available
+		if room.LastMessage != nil {
+			conv.LastMessage = room.LastMessage.Content
+			conv.LastMessageAt = room.LastMessage.CreatedAt
+		}
+
+		conversations = append(conversations, conv)
+	}
+
+	return conversations, nil
+}

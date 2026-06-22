@@ -73,3 +73,16 @@ build/
 # ===========================
 .DS_Store
 Thumbs.db
+
+web/node_modules/
+web/.output/
+web/.data/
+web/.nuxt/
+web/.nitro/
+web/.cache/
+web/dist/
+web/.output/
+
+.kilo/
+.agents/
+web/.next/

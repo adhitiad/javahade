@@ -10,6 +10,18 @@ from django.db import models
 from django.utils import timezone
 
 
+from django.core.files.storage import FileSystemStorage
+from storages.backends.s3boto3 import S3Boto3Storage
+import os
+
+def get_video_storage():
+    """Mengembalikan penyimpan khusus untuk video (S3/Lokal, bukan Box)."""
+    # Jika berjalan di production (menggunakan AWS S3)
+    if os.environ.get("DJANGO_SETTINGS_MODULE") == "config.settings.production":
+        return S3Boto3Storage()
+    # Secara default di local, gunakan FileSystemStorage agar masuk ke /media/
+    return FileSystemStorage()
+
 class Post(models.Model):
     """Content post by a creator."""
 
@@ -34,7 +46,7 @@ class Post(models.Model):
     title = models.CharField(max_length=200, blank=True, default="")
     body = models.TextField(blank=True, default="")
     media_url = models.URLField(blank=True, default="")
-    media_file = models.FileField(upload_to="posts/%Y/%m/", blank=True, null=True)
+    media_file = models.FileField(upload_to="posts/%Y/%m/", blank=True, null=True, storage=get_video_storage)
     thumbnail = models.ImageField(upload_to="thumbnails/%Y/%m/", blank=True, null=True)
 
     # Monetization
@@ -120,6 +132,27 @@ class Like(models.Model):
         return f"{self.user.username} likes {self.post_id}"  # type: ignore
 
 
+class PostUnlock(models.Model):
+    """Tracks users who have purchased a Pay-Per-View (PPV) post."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    objects = models.Manager()
+
+    post = models.ForeignKey(Post, on_delete=models.CASCADE, related_name="unlocks")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="unlocked_posts"
+    )
+    price_paid = models.DecimalField(max_digits=10, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "post_unlocks"
+        unique_together = ["post", "user"]
+
+    def __str__(self):
+        return f"{self.user.username} unlocked {self.post.title}"
+
+
 class Story(models.Model):
     """Ephemeral story (expires after 24h)."""
 
@@ -132,7 +165,7 @@ class Story(models.Model):
         related_name="stories",
         limit_choices_to={"role": "host"},
     )
-    media_file = models.FileField(upload_to="stories/%Y/%m/")
+    media_file = models.FileField(upload_to="stories/%Y/%m/", storage=get_video_storage)
     caption = models.CharField(max_length=300, blank=True, default="")
     view_count = models.PositiveIntegerField(default=0)
     expires_at = models.DateTimeField()

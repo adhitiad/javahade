@@ -49,7 +49,7 @@ class RegisterView(generics.CreateAPIView):
             status=status.HTTP_201_CREATED,
         )
 
-from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from django.conf import settings
 
 class CustomCookieLoginView(TokenObtainPairView):
@@ -91,6 +91,58 @@ class CustomCookieLoginView(TokenObtainPairView):
             )
         return response
 
+class CustomCookieTokenRefreshView(TokenRefreshView):
+    """
+    POST /api/v1/auth/refresh/
+    Membaca refresh token dari HttpOnly cookie jika tidak ada di body,
+    lalu menuliskan token baru ke dalam HttpOnly cookie.
+    """
+    def post(self, request, *args, **kwargs):
+        # Ambil refresh token dari cookie jika tidak ada di body
+        refresh_token = request.data.get("refresh")
+        if not refresh_token:
+            refresh_token = request.COOKIES.get("refresh_token")
+            
+        if refresh_token:
+            # Masukkan ke dalam request data agar serializer memprosesnya
+            mutable_data = request.data.copy() if hasattr(request.data, "copy") else {}
+            mutable_data["refresh"] = refresh_token
+            request._full_data = mutable_data
+            
+        response = super().post(request, *args, **kwargs)
+        
+        if response.status_code == 200 and isinstance(response.data, dict):
+            access_token = str(response.data.get('access', ''))
+            new_refresh_token = str(response.data.get('refresh', ''))
+            
+            # Hapus token dari JSON body
+            if 'access' in response.data:
+                del response.data['access']
+            if 'refresh' in response.data:
+                del response.data['refresh']
+                
+            response.data['detail'] = "Token refresh successful."
+            
+            # Set Cookies
+            response.set_cookie(
+                key='access_token',
+                value=access_token,
+                httponly=True,
+                secure=not settings.DEBUG,
+                samesite='Strict',
+                max_age=3600
+            )
+            if new_refresh_token:
+                response.set_cookie(
+                    key='refresh_token',
+                    value=new_refresh_token,
+                    httponly=True,
+                    secure=not settings.DEBUG,
+                    samesite='Strict',
+                    max_age=7*24*3600
+                )
+        return response
+
 class LogoutAllDevicesView(APIView):
     """
     POST /api/v1/auth/logout-all/
@@ -103,6 +155,94 @@ class LogoutAllDevicesView(APIView):
         user.jwt_secret_version += 1
         user.save(update_fields=['jwt_secret_version'])
         return Response({"detail": "Successfully logged out from all devices."}, status=status.HTTP_200_OK)
+
+
+class SocialLoginView(APIView):
+    """
+    POST /api/v1/auth/social-login/
+    Internal endpoint called by Next.js Better Auth to sync user session.
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        # Validate internal service token
+        service_token = request.headers.get("X-Service-Token")
+        expected_token = getattr(settings, "INTERNAL_SERVICE_TOKEN", "")
+        if service_token != expected_token:
+            return Response({"detail": "Unauthorized internal call."}, status=status.HTTP_403_FORBIDDEN)
+
+        email = request.data.get("email")
+        name = request.data.get("name")
+        provider = request.data.get("provider")
+        avatar = request.data.get("avatar", "")
+
+        if not email:
+            return Response({"detail": "Email is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # "sandingkan dgn email" - Link account by email
+        user = User.objects.filter(email=email).first()
+        
+        if not user:
+            import uuid
+            # Create new user
+            username = f"user_{uuid.uuid4().hex[:8]}"
+            user = User.objects.create(
+                email=email,
+                username=username,
+                first_name=name or "",
+                is_verified=True,
+                has_accepted_cookies=True,
+            )
+            # Set un-usable password
+            user.set_unusable_password()
+            if avatar:
+                user.avatar = avatar
+            user.save()
+        else:
+            # Sync avatar/name optionally if empty
+            updated = False
+            if avatar and not user.avatar:
+                user.avatar = avatar
+                updated = True
+            if name and not user.first_name:
+                user.first_name = name
+                updated = True
+            if updated:
+                user.save()
+
+        # Generate JWT Tokens
+        from rest_framework_simplejwt.tokens import RefreshToken
+        refresh = RefreshToken.for_user(user)
+        access_token = str(refresh.access_token)
+        refresh_token = str(refresh)
+
+        response = Response({
+            "detail": "Social login sync successful.",
+            "user": {
+                "id": str(user.id),
+                "username": user.username,
+                "email": user.email,
+            }
+        }, status=status.HTTP_200_OK)
+
+        # Set HttpOnly Cookies
+        response.set_cookie(
+            key='access_token',
+            value=access_token,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Strict',
+            max_age=3600
+        )
+        response.set_cookie(
+            key='refresh_token',
+            value=refresh_token,
+            httponly=True,
+            secure=not settings.DEBUG,
+            samesite='Strict',
+            max_age=7*24*3600
+        )
+        return response
 
 
 # ─────────────────────────────────────────────

@@ -25,8 +25,15 @@ urlpatterns = [
     path("api/v1/families/", include("apps.family.urls")),
     path("api/v1/notifications/", include("apps.notifications.urls")),
     path("api/v1/moderation/", include("apps.moderation.urls")),
+    path("api/v1/admin/", include("config.urls_admin")),
     
     # SEO Routes
     path("robots.txt", RedirectView.as_view(url='/static/robots.txt', permanent=True)),
     path("sitemap.xml", RedirectView.as_view(url='/static/sitemap.xml', permanent=True)),
 ]
+
+from django.conf import settings
+from django.conf.urls.static import static
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

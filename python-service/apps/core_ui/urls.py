@@ -24,6 +24,10 @@ urlpatterns = [
     path("creator/<str:username>/", views.creator_profile_view, name="creator_profile"),
     path("chat/", views.chat_inbox_view, name="chat_inbox"),
     path("chat/<str:username>/", views.chat_detail_view, name="chat_detail"),
+    path('chat/<str:username>/upload-image/', views.chat_upload_image_view, name='chat_upload_image'),
+    path('chat/<str:username>/buy-access/', views.buy_chat_access_view, name='buy_chat_access'),
+    path('host/post/create/', views.create_post_view, name='create_post'),
+    path('feed/<uuid:post_id>/buy/', views.buy_post_view, name='buy_post'),
     # Static Pages
     path("about/", views.about_view, name="about"),
     path("help/", views.help_view, name="help"),

@@ -18,26 +18,25 @@ type Config struct {
 	DatabaseURL string `envconfig:"DATABASE_URL" default:"postgres://kreativa:kreativa_pass@localhost:5432/kreativa_db"`
 
 	// APIs
-	ModerationAPIURL string `envconfig:"MODERATION_API_URL" default:"http://python-api:8000/api/v1/moderation/check/"`
+	ModerationAPIURL string `envconfig:"MODERATION_API_URL" default:"http://localhost:8000/api/v1/moderation/check/"`
 
 	// Redis
 	RedisURL string `envconfig:"REDIS_URL" default:"redis://localhost:6379/0"`
 
 	// MongoDB
 	MongoURI    string `envconfig:"MONGO_URI" default:"mongodb://localhost:27017"`
-	MongoDBName string `envconfig:"MONGO_DB_NAME" default:"kreativa_chat"`
+	MongoDBName string `envconfig:"MONGO_DB_NAME" default:"javahade_chat"`
 
 	// JWT
 	JWTSecretKey string `envconfig:"JWT_SECRET_KEY" default:"change-me-shared-jwt-secret-between-python-and-go"`
 
 	// Service Ports
-	BookingServicePort int `envconfig:"BOOKING_SERVICE_PORT" default:"8080"`
-	ChatServicePort    int `envconfig:"CHAT_SERVICE_PORT" default:"8081"`
-	StreamServicePort  int `envconfig:"STREAM_SERVICE_PORT" default:"8082"`
+	BookingServicePort int `envconfig:"BOOKING_SERVICE_PORT" default:"3333"`
+	ChatServicePort    int `envconfig:"CHAT_SERVICE_PORT" default:"3335"`
+	StreamServicePort  int `envconfig:"STREAM_SERVICE_PORT" default:"3334"`
 
-	// OvenMediaEngine
-	OMEAPIURL         string `envconfig:"OME_API_URL" default:"http://ome:8081/v1"`
-	OMEAPIAccessToken string `envconfig:"OME_API_ACCESS_TOKEN" default:""`
+	// Video SDK
+	VideoSDKToken string `envconfig:"VIDEOSDK_TOKEN" `
 
 	// CORS
 	CORSAllowedOrigins string `envconfig:"CORS_ALLOWED_ORIGINS" default:"http://localhost:3000,http://localhost:5173"`
@@ -56,4 +55,3 @@ func Load() *Config {
 func Addr(port int) string {
 	return fmt.Sprintf(":%d", port)
 }
-

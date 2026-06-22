@@ -279,6 +279,10 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 		if mediaURL, ok := msg.Payload["media_url"].(string); ok {
 			chatMsg.MediaURL = sanitizeContent(mediaURL)
 		}
+		
+		if meta, ok := msg.Payload["metadata"].(map[string]interface{}); ok {
+			chatMsg.Metadata = meta
+		}
 
 		h.messageSvc.SaveMessage(ctx, chatMsg)
 
@@ -292,6 +296,7 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 				"username":   username,
 				"type":       msgType,
 				"content":    content,
+				"metadata":   chatMsg.Metadata,
 				"created_at": chatMsg.CreatedAt.Format(time.RFC3339),
 			},
 			Timestamp: time.Now().Unix(),
@@ -320,6 +325,76 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 			Payload: map[string]interface{}{
 				"user_id":    client.UserID,
 				"message_id": msg.Payload["message_id"],
+			},
+			Timestamp: time.Now().Unix(),
+		}
+		data, _ := json.Marshal(response)
+		h.Broadcast <- RoomMessage{RoomID: msg.RoomID, Data: data}
+
+	case "sticker":
+		stickerID, _ := msg.Payload["sticker_id"].(string)
+		stickerURL, _ := msg.Payload["sticker_url"].(string)
+
+		chatMsg := &model.ChatMessage{
+			RoomID:         msg.RoomID,
+			SenderID:       client.UserID,
+			SenderUsername: client.Username,
+			Type:           "sticker",
+			Content:        "",
+		}
+		if chatMsg.Gift == nil {
+			chatMsg.Gift = &model.GiftData{} // Fallback to store sticker info
+		}
+		chatMsg.Gift.Type = "sticker"
+		chatMsg.Gift.Animation = sanitizeContent(stickerURL)
+
+		h.messageSvc.SaveMessage(ctx, chatMsg)
+
+		response := model.WSMessage{
+			Type:   "sticker",
+			RoomID: msg.RoomID,
+			Payload: map[string]interface{}{
+				"sender_id":   client.UserID,
+				"username":    client.Username,
+				"sticker_id":  stickerID,
+				"sticker_url": stickerURL,
+				"created_at":  chatMsg.CreatedAt.Format(time.RFC3339),
+			},
+			Timestamp: time.Now().Unix(),
+		}
+		data, _ := json.Marshal(response)
+		h.Broadcast <- RoomMessage{RoomID: msg.RoomID, Data: data}
+
+	case "bounty":
+		amount, _ := msg.Payload["amount"].(float64)
+		currency, _ := msg.Payload["currency"].(string)
+		message, _ := msg.Payload["message"].(string)
+
+		chatMsg := &model.ChatMessage{
+			RoomID:         msg.RoomID,
+			SenderID:       client.UserID,
+			SenderUsername: client.Username,
+			Type:           "bounty",
+			Content:        sanitizeContent(message),
+		}
+		if chatMsg.Gift == nil {
+			chatMsg.Gift = &model.GiftData{}
+		}
+		chatMsg.Gift.Type = "bounty"
+		chatMsg.Gift.Amount = amount
+
+		h.messageSvc.SaveMessage(ctx, chatMsg)
+
+		response := model.WSMessage{
+			Type:   "bounty",
+			RoomID: msg.RoomID,
+			Payload: map[string]interface{}{
+				"sender_id":  client.UserID,
+				"username":   client.Username,
+				"amount":     amount,
+				"currency":   currency,
+				"message":    sanitizeContent(message),
+				"created_at": chatMsg.CreatedAt.Format(time.RFC3339),
 			},
 			Timestamp: time.Now().Unix(),
 		}

@@ -28,6 +28,7 @@ class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
     avatar = models.ImageField(upload_to="avatars/%Y/%m/", blank=True, null=True)
+    cover_image = models.ImageField(upload_to="user_covers/%Y/%m/", blank=True, null=True)
     bio = models.TextField(max_length=500, blank=True, default="")
     gender = models.CharField(max_length=1, choices=Gender.choices, default=Gender.UNSPECIFIED)
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.USER)
@@ -152,6 +153,10 @@ class CreatorProfile(models.Model):
     subscription_price = models.DecimalField(
         max_digits=10, decimal_places=2, default=0.00,
         help_text="Default monthly subscription price in USD"
+    )
+    chat_price = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0.00,
+        help_text="Price to unlock chat in IDR. 0 means free or covered by subscription."
     )
     # Legacy balance fields
     earnings_balance = models.DecimalField(

@@ -1,3 +1,4 @@
+{% load static %}
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex items-center justify-between h-16">
           <!-- Logo -->
@@ -5,23 +6,11 @@
             href="{% url 'booking:dashboard' %}"
             class="flex items-center gap-3 group"
           >
-            <div
-              class="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-shadow"
+            <img
+              src="{% static 'images/logo.png' %}"
+              alt="Javahade Logo"
+              class="w-10 h-10 rounded-full object-cover border border-white/20 shadow-lg shadow-indigo-500/25 group-hover:shadow-indigo-500/40 transition-shadow"
             >
-              <svg
-                class="w-5 h-5 text-white"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                  stroke-width="2"
-                  d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                />
-              </svg>
-            </div>
             <span class="text-lg font-bold gradient-text"
               >Javahade Booking</span
             >
@@ -122,40 +111,61 @@
                  hx-swap="outerHTML">
             </div>
 
-            <div
-              class="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full glass-light"
-            >
-              <div
-                class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-xs font-bold text-white"
+            <!-- Dropdown Profil & Menu (Alpine.js) -->
+            <div x-data="{ open: false }" class="relative hidden sm:block">
+              <button 
+                @click="open = !open" 
+                @click.away="open = false"
+                class="flex items-center gap-2 px-3 py-1.5 rounded-full glass-light hover:bg-white/10 transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               >
-                {{ user.username|first|upper }}
-              </div>
-              <span class="text-sm font-medium text-gray-300"
-                >{{ user.username }}</span
-              >
-            </div>
-            
-            {% if user.role == 'user'  %}
-            <a
-              href="{% url 'booking:edit_profile' %}"
-              class="hidden md:block px-3 py-2 rounded-lg text-sm font-medium text-indigo-300 hover:text-indigo-200 hover:bg-indigo-500/10 transition-all duration-200"
-            >
-              👤 Profil
-            </a>
-            <a
-              href="{% url 'booking:settings' %}"
-              class="hidden md:block px-3 py-2 rounded-lg text-sm font-medium text-emerald-300 hover:text-emerald-200 hover:bg-emerald-500/10 transition-all duration-200"
-            >
-              ⚙️ Pengaturan
-            </a>
-            {% endif %}
+                {% if user.avatar %}
+                <img src="{{ user.avatar.url }}" alt="{{ user.username }}" class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-xs font-bold text-white object-cover shadow-md">
+                {% else %}
+                <div class="w-7 h-7 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-xs font-bold text-white shadow-md">
+                  {{ user.username|first|upper }}
+                </div>
+                {% endif %}
+                <span class="text-sm font-medium text-gray-300">{{ user.username }}</span>
+                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{'rotate-180': open}" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
+              </button>
 
-            <a
-              href="{% url 'booking:logout' %}"
-              class="px-4 py-2 rounded-lg text-sm font-medium text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all duration-200"
-            >
-              Logout
-            </a>
+              <!-- Dropdown Menu -->
+              <div 
+                x-show="open" 
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 translate-y-2"
+                x-transition:enter-end="opacity-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 translate-y-0"
+                x-transition:leave-end="opacity-0 translate-y-2"
+                class="absolute right-0 mt-3 w-56 rounded-xl glass border border-white/10 shadow-2xl py-2 z-50"
+                style="display: none;"
+              >
+                <div class="px-4 py-2 border-b border-white/10 mb-2">
+                  <p class="text-xs text-gray-400">Masuk sebagai</p>
+                  <p class="text-sm font-bold text-white truncate">{{ user.username }}</p>
+                </div>
+                
+                <a href="{% url 'core_ui:creator_profile' user.username %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                  👁️ Profil Publik
+                </a>
+                
+                {% if user.role == 'user' %}
+                <a href="{% url 'booking:edit_profile' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                  👤 Edit Profil
+                </a>
+                <a href="{% url 'booking:settings' %}" class="block px-4 py-2 text-sm text-gray-300 hover:bg-white/10 hover:text-white transition-colors">
+                  ⚙️ Pengaturan
+                </a>
+                {% endif %}
+
+                <div class="h-px bg-white/10 my-2"></div>
+
+                <a href="{% url 'booking:logout' %}" class="block px-4 py-2 text-sm text-red-400 hover:bg-red-500/10 hover:text-red-300 transition-colors">
+                  🚫 Logout
+                </a>
+              </div>
+            </div>
 
             <!-- Mobile menu button -->
             <button

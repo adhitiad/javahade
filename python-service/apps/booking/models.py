@@ -381,6 +381,12 @@ class HostBooking(models.Model):
     location_shared_at = models.DateTimeField(
         null=True, blank=True, verbose_name="Waktu Lokasi Dibagikan"
     )
+    meeting_latitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Latitude"
+    )
+    meeting_longitude = models.DecimalField(
+        max_digits=9, decimal_places=6, null=True, blank=True, verbose_name="Longitude"
+    )
     is_no_show_cancelled = models.BooleanField(
         default=False, verbose_name="Dibatalkan karena No-Show"
     )

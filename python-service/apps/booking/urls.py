@@ -56,6 +56,7 @@ urlpatterns = [
     # --- API Endpoints ---
     path("api/chart-data/", views.chart_data_api, name="chart_data"),
     path("api/token/", views.token_api, name="token_api"),
+    path("api/calculate-price/", views.calculate_price_api, name="calculate_price_api"),
     
     # --- Host Booking ---
     path("host/rates/", views.manage_host_rates_view, name="manage_host_rates"),

@@ -27,17 +27,28 @@ from .models import Booking, Room
 # =============================================================================
 
 
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+@csrf_exempt
 def register_view(request):
     """
     Halaman registrasi user baru.
-    POST: Buat user baru, redirect ke login.
+    POST: Buat user baru, redirect ke login atau return JSON.
     GET: Tampilkan form registrasi.
     """
     if request.user.is_authenticated:
+        if request.content_type == "application/json":
+            return JsonResponse({"success": True})
         return redirect("booking:dashboard")
 
     if request.method == "POST":
-        form = RegisterForm(request.POST)
+        if request.content_type == "application/json":
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        form = RegisterForm(data)
         if form.is_valid():
             user = form.save()
 
@@ -51,12 +62,18 @@ def register_view(request):
             # Simpan ke session untuk ditampilkan 1 kali
             request.session["new_recovery_codes"] = codes
 
+            if request.content_type == "application/json":
+                return JsonResponse({"success": True, "message": "Akun berhasil dibuat.", "recovery_codes": codes})
+
             messages.success(
                 request,
                 f"Akun berhasil dibuat! Selamat datang, {user.username}. "
                 "Harap simpan kode pemulihan Anda.",
             )
             return redirect("booking:recovery_codes")
+        else:
+            if request.content_type == "application/json":
+                return JsonResponse({"success": False, "message": "Registrasi gagal.", "errors": form.errors}, status=400)
     else:
         form = RegisterForm()
 
@@ -101,25 +118,43 @@ def generate_recovery_codes_view(request):
 
 from django_ratelimit.decorators import ratelimit
 
+@csrf_exempt
 @ratelimit(key='ip', rate='5/m', method=['POST'], block=True)
 def login_view(request):
     """
     Halaman login user.
-    POST: Autentikasi user, buat session, redirect ke dashboard.
+    POST: Autentikasi user, buat session, redirect ke dashboard atau return JSON.
     GET: Tampilkan form login.
-    CSRF protection aktif secara otomatis.
     """
     if request.user.is_authenticated:
+        if request.content_type == "application/json":
+            return JsonResponse({"success": True, "user": {"username": request.user.username}})
         return redirect("booking:dashboard")
 
     if request.method == "POST":
-        form = LoginForm(request, data=request.POST)
+        if request.content_type == "application/json":
+            data = json.loads(request.body)
+        else:
+            data = request.POST
+            
+        form = LoginForm(request, data=data)
         if form.is_valid():
             user = form.get_user()
             login(request, user)
+            
+            if request.content_type == "application/json":
+                return JsonResponse({
+                    "success": True, 
+                    "message": f"Selamat datang, {user.username}!",
+                    "user": {"id": user.id, "username": user.username}
+                })
+
             messages.success(request, f"Selamat datang kembali, {user.get_username()}!")
             next_url = request.GET.get("next", "booking:dashboard")
             return redirect(next_url)
+        else:
+            if request.content_type == "application/json":
+                return JsonResponse({"success": False, "message": "Login gagal. Periksa kembali kredensial Anda.", "errors": form.errors}, status=401)
     else:
         form = LoginForm()
 
@@ -209,8 +244,29 @@ def dashboard_view(request):
     available_rooms = Room.objects.filter(is_active=True).count()
 
     # Booking terbaru (5 terakhir)
-    recent_bookings = Booking.objects.filter(user=user).select_related("room")[:5]
+    recent_bookings_qs = Booking.objects.filter(user=user).select_related("room").order_by('-date', '-start_time')[:5]
+    
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        recent_bookings = [
+            {
+                "id": b.id,
+                "room_name": b.room.name,
+                "date": b.date.strftime("%Y-%m-%d"),
+                "start_time": b.start_time.strftime("%H:%M"),
+                "end_time": b.end_time.strftime("%H:%M"),
+                "status": b.get_status_display(),
+                "total_cost": float(b.total_cost)
+            } for b in recent_bookings_qs
+        ]
+        return JsonResponse({
+            "total_bookings": total_bookings,
+            "active_bookings": active_bookings,
+            "today_bookings": today_bookings,
+            "available_rooms": available_rooms,
+            "recent_bookings": recent_bookings,
+        })
 
+    recent_bookings = recent_bookings_qs
     context = {
         "total_bookings": total_bookings,
         "active_bookings": active_bookings,
@@ -296,8 +352,23 @@ def chart_data_api(request):
 @login_required
 def room_list_view(request):
     """Daftar ruangan yang tersedia untuk booking."""
-    rooms = Room.objects.filter(is_active=True)
-    return render(request, "booking/rooms.html", {"rooms": rooms})
+    rooms_qs = Room.objects.filter(is_active=True)
+    
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        rooms = [
+            {
+                "id": r.id,
+                "name": r.name,
+                "description": r.description,
+                "capacity": r.capacity,
+                "hourly_rate": float(r.hourly_rate),
+                "image": r.image.url if r.image else None,
+                "features": r.features
+            } for r in rooms_qs
+        ]
+        return JsonResponse({"rooms": rooms})
+        
+    return render(request, "booking/rooms.html", {"rooms": rooms_qs})
 
 
 # =============================================================================
@@ -305,6 +376,7 @@ def room_list_view(request):
 # =============================================================================
 
 
+@csrf_exempt
 @login_required
 def booking_create_view(request):
     """
@@ -313,7 +385,13 @@ def booking_create_view(request):
     GET: Tampilkan form booking.
     """
     if request.method == "POST":
-        form = BookingForm(request.POST)
+        import json
+        if request.content_type == "application/json":
+            data = json.loads(request.body)
+            form = BookingForm(data)
+        else:
+            form = BookingForm(request.POST)
+            
         if form.is_valid():
             booking = form.save(commit=False)
             booking.user = request.user
@@ -321,6 +399,8 @@ def booking_create_view(request):
             booking.total_cost = booking.room.hourly_rate * booking.duration_hours
             try:
                 booking.save()
+                if request.headers.get("Accept") == "application/json":
+                    return JsonResponse({"status": "success", "message": f"Booking ruangan '{booking.room.name}' berhasil dibuat!", "booking_id": booking.id})
                 messages.success(
                     request,
                     f"Booking ruangan '{booking.room.name}' pada "
@@ -328,8 +408,17 @@ def booking_create_view(request):
                 )
                 return redirect("booking:my_bookings")
             except Exception as e:
+                if request.headers.get("Accept") == "application/json":
+                    return JsonResponse({"status": "error", "message": f"Gagal membuat booking: {e}"}, status=400)
                 messages.error(request, f"Gagal membuat booking: {e}")
+        else:
+            if request.headers.get("Accept") == "application/json":
+                return JsonResponse({"status": "error", "errors": form.errors}, status=400)
     else:
+        if request.headers.get("Accept") == "application/json":
+            rooms = Room.objects.filter(is_active=True).values("id", "name", "hourly_rate")
+            return JsonResponse({"rooms": list(rooms)})
+            
         # Pre-fill room jika ada query param
         initial = {}
         room_id = request.GET.get("room")
@@ -370,6 +459,28 @@ def my_bookings_view(request):
         client_bookings = client_bookings.filter(status=status_filter)
         incoming_bookings = incoming_bookings.filter(status=status_filter)
 
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        def serialize_booking(b):
+            is_room_booking = hasattr(b, 'room')
+            return {
+                "id": b.id,
+                "type": "room" if is_room_booking else "host",
+                "room_name": b.room.name if is_room_booking else b.host.username,
+                "date": b.date.strftime("%Y-%m-%d") if is_room_booking else b.start_datetime.strftime("%Y-%m-%d"),
+                "start_time": b.start_time.strftime("%H:%M") if is_room_booking else b.start_datetime.strftime("%H:%M"),
+                "end_time": b.end_time.strftime("%H:%M") if is_room_booking else b.end_datetime.strftime("%H:%M"),
+                "status": b.status,
+                "total_cost": float(b.total_cost) if is_room_booking else float(b.total_price),
+            }
+
+        return JsonResponse({
+            "client_bookings": [serialize_booking(b) for b in bookings],
+            "host_client_bookings": [serialize_booking(b) for b in client_bookings],
+            "host_incoming_bookings": [serialize_booking(b) for b in incoming_bookings],
+            "status_choices": Booking.Status.choices,
+            "status_filter": status_filter,
+        })
+
     return render(
         request,
         "booking/my_bookings.html",
@@ -397,6 +508,23 @@ def booking_detail_view(request, booking_id):
     # URL WebSocket chat service dari environment
     chat_ws_url = getattr(settings, "CHAT_WS_URL", "ws://localhost:8081/ws/chat")
 
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        return JsonResponse({
+            "booking": {
+                "id": booking.id,
+                "room_id": booking.room.id,
+                "room_name": booking.room.name,
+                "date": booking.date.strftime("%Y-%m-%d"),
+                "start_time": booking.start_time.strftime("%H:%M"),
+                "end_time": booking.end_time.strftime("%H:%M"),
+                "status": booking.status,
+                "duration_hours": booking.duration_hours,
+                "total_cost": float(booking.total_cost),
+                "purpose": booking.purpose,
+            },
+            "chat_ws_url": chat_ws_url,
+        })
+
     context = {
         "booking": booking,
         "chat_ws_url": chat_ws_url,
@@ -405,6 +533,7 @@ def booking_detail_view(request, booking_id):
     return render(request, "booking/booking_detail.html", context)
 
 
+@csrf_exempt
 @login_required
 @require_POST
 def booking_cancel_view(request, booking_id):
@@ -418,7 +547,15 @@ def booking_cancel_view(request, booking_id):
     if booking.status in [Booking.Status.PENDING, Booking.Status.CONFIRMED]:
         booking.status = Booking.Status.CANCELLED
         booking.save()
+        if request.headers.get("Accept") == "application/json":
+            return JsonResponse({"status": "success", "message": "Booking berhasil dibatalkan."})
         messages.success(request, "Booking berhasil dibatalkan.")
+    else:
+        if request.headers.get("Accept") == "application/json":
+            return JsonResponse({"status": "error", "message": "Booking tidak dapat dibatalkan."}, status=400)
+
+    if request.headers.get("Accept") == "application/json":
+        return JsonResponse({"status": "success", "message": "Status tidak diubah."})
 
     return redirect("booking:my_bookings")
 
@@ -434,17 +571,29 @@ def manage_host_rates_view(request):
     Dashboard untuk Host mengatur daftar harga (rates) mereka.
     """
     from .models import HostBookingRate
+    import json
 
     if request.user.role != "host":
+        if request.headers.get("Accept") == "application/json":
+            return JsonResponse({"status": "error", "message": "Hanya Host yang dapat mengakses halaman ini."}, status=403)
         messages.error(request, "Hanya Host yang dapat mengakses halaman ini.")
         return redirect("core_ui:index")
 
     if request.method == "POST":
         # Simpan pengaturan harga
-        duration_type = request.POST.get("duration_type")
-        price = request.POST.get("price")
-        currency = request.POST.get("currency", "IDR")
-        is_active = request.POST.get("is_active") == "on"
+        is_json = request.content_type == "application/json"
+        
+        if is_json:
+            data = json.loads(request.body)
+            duration_type = data.get("duration_type")
+            price = data.get("price")
+            currency = data.get("currency", "IDR")
+            is_active = data.get("is_active", False)
+        else:
+            duration_type = request.POST.get("duration_type")
+            price = request.POST.get("price")
+            currency = request.POST.get("currency", "IDR")
+            is_active = request.POST.get("is_active") == "on"
 
         if duration_type and price:
             try:
@@ -462,15 +611,39 @@ def manage_host_rates_view(request):
                     rate.currency = currency
                     rate.is_active = is_active
                     rate.save()
+                    
+                if is_json:
+                    return JsonResponse({"status": "success", "message": "Daftar harga berhasil diperbarui."})
                 messages.success(request, "Daftar harga berhasil diperbarui.")
             except Exception as e:
+                if is_json:
+                    return JsonResponse({"status": "error", "message": f"Gagal menyimpan harga: {e}"}, status=400)
                 messages.error(request, f"Gagal menyimpan harga: {e}")
+                
+        if is_json:
+            return JsonResponse({"status": "error", "message": "Data tidak lengkap"}, status=400)
         return redirect("booking:manage_host_rates")
 
     # Ambil semua rates milik host ini
     my_rates = HostBookingRate.objects.filter(host=request.user)
     available_durations = HostBookingRate.DurationType.choices
     available_currencies = HostBookingRate.CurrencyChoices.choices
+
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        return JsonResponse({
+            "rates": [
+                {
+                    "id": r.id,
+                    "duration_type": r.duration_type,
+                    "duration_display": r.get_duration_type_display(),
+                    "price": float(r.price),
+                    "currency": r.currency,
+                    "is_active": r.is_active,
+                } for r in my_rates
+            ],
+            "available_durations": available_durations,
+            "available_currencies": available_currencies,
+        })
 
     return render(
         request,
@@ -498,6 +671,8 @@ def book_host_view(request, username):
         ).exists()
 
         if not has_kyc:
+            if request.headers.get("Accept") == "application/json":
+                return JsonResponse({"status": "error", "requires_kyc": True, "message": "Anda diwajibkan untuk Verifikasi KTP (KYC) terlebih dahulu."}, status=403)
             messages.error(
                 request,
                 "Keamanan adalah prioritas. Anda diwajibkan untuk Verifikasi KTP (KYC) terlebih dahulu sebelum dapat mem-booking sesi privat dengan Host.",
@@ -512,12 +687,26 @@ def book_host_view(request, username):
     )
 
     if request.method == "POST":
-        rate_id = request.POST.get("rate_id")
-        start_datetime = request.POST.get("start_datetime")
-        notes = request.POST.get("notes", "")
-
-        payment_method = request.POST.get("payment_method", "wallet")
-        paypal_tx = request.POST.get("paypal_transaction_id")
+        is_json = request.content_type == "application/json"
+        
+        if is_json:
+            import json
+            data = json.loads(request.body)
+            rate_id = data.get("rate_id")
+            start_datetime = data.get("start_datetime")
+            notes = data.get("notes", "")
+            payment_method = data.get("payment_method", "wallet")
+            paypal_tx = data.get("paypal_transaction_id")
+            pay_currency = data.get("pay_currency")
+            idempotency_key = data.get("idempotency_key")
+        else:
+            rate_id = request.POST.get("rate_id")
+            start_datetime = request.POST.get("start_datetime")
+            notes = request.POST.get("notes", "")
+            payment_method = request.POST.get("payment_method", "wallet")
+            paypal_tx = request.POST.get("paypal_transaction_id")
+            pay_currency = request.POST.get("pay_currency")
+            idempotency_key = request.POST.get("idempotency_key")
 
         if rate_id and start_datetime:
             try:
@@ -532,7 +721,7 @@ def book_host_view(request, username):
                     if payment_method in ["bnb", "usdt"]:
                         booking_status = HostBooking.Status.PENDING_PAYMENT
                     else:
-                        pay_currency = request.POST.get("pay_currency", currency)
+                        pay_currency = pay_currency or currency
                         from decimal import Decimal
                         from apps.payments.services import ExchangeRateService
 
@@ -541,6 +730,8 @@ def book_host_view(request, username):
                                 currency, pay_currency
                             )
                             exchange_rate = Decimal(str(rate_value))
+                            # Apply spread directly in backend for safety if it was client side
+                            exchange_rate = exchange_rate * Decimal("1.05") # 5% spread
                         except Exception:
                             exchange_rate = Decimal("1.0")
 
@@ -552,7 +743,6 @@ def book_host_view(request, username):
                         locked_host = User.objects.select_for_update().get(id=host_user.id)
 
                         # Idempotency Check
-                        idempotency_key = request.POST.get("idempotency_key")
                         if idempotency_key:
                             if HostBooking.objects.filter(idempotency_key=idempotency_key).exists():
                                 raise ValueError("Booking already processed.")
@@ -676,22 +866,51 @@ def book_host_view(request, username):
                         )
 
                 if booking_status == HostBooking.Status.PENDING_PAYMENT:
-                    messages.success(
-                        request,
-                        f"Request booking berhasil dibuat. Silakan tunggu admin memverifikasi TXID Crypto Anda.",
-                    )
+                    msg = f"Request booking berhasil dibuat. Silakan tunggu admin memverifikasi TXID Crypto Anda."
+                    if is_json:
+                        return JsonResponse({"status": "success", "message": msg, "booking_id": str(booking.id)})
+                    messages.success(request, msg)
                 else:
-                    messages.success(
-                        request,
-                        f"Berhasil mengirim request booking (Lunas) ke {host_user.username}!",
-                    )
+                    msg = f"Berhasil mengirim request booking (Lunas) ke {host_user.username}!"
+                    if is_json:
+                        return JsonResponse({"status": "success", "message": msg, "booking_id": str(booking.id)})
+                    messages.success(request, msg)
                 return redirect("core_ui:creator_profile", username=username)
             except ValueError as ve:
+                if is_json:
+                    return JsonResponse({"status": "error", "message": str(ve)}, status=400)
                 messages.error(request, str(ve))
             except Exception as e:
+                if is_json:
+                    return JsonResponse({"status": "error", "message": f"Gagal mem-booking: {e}"}, status=400)
                 messages.error(request, f"Gagal mem-booking: {e}")
 
     from django.conf import settings
+
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        return JsonResponse({
+            "host": {
+                "id": host_user.id,
+                "username": host_user.username,
+            },
+            "rates": [
+                {
+                    "id": r.id,
+                    "duration_display": r.get_duration_type_display(),
+                    "duration_type": r.duration_type,
+                    "price": float(r.price),
+                    "currency": r.currency,
+                } for r in rates
+            ],
+            "paypal_client_id": settings.PAYPAL_CLIENT_ID,
+            "user_balances": {
+                "IDR": float(request.user.balance_idr),
+                "USD": float(request.user.balance_usd),
+                "SGD": float(request.user.balance_sgd),
+                "MYR": float(request.user.balance_myr),
+                "CNY": float(request.user.balance_cny),
+            },
+        })
 
     return render(
         request,
@@ -728,6 +947,23 @@ def manage_host_bookings_view(request):
         return redirect("core_ui:index")
 
     bookings = HostBooking.objects.filter(host=request.user).order_by("-created_at")
+
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        return JsonResponse({
+            "bookings": [
+                {
+                    "id": str(b.id),
+                    "client_username": b.user.username,
+                    "duration_display": b.rate.get_duration_type_display() if b.rate else None,
+                    "start_datetime": b.start_datetime.isoformat() if b.start_datetime else None,
+                    "status": b.status,
+                    "status_display": b.get_status_display(),
+                    "total_cost": float(b.total_cost),
+                    "currency": b.currency,
+                    "created_at": b.created_at.isoformat(),
+                } for b in bookings
+            ]
+        })
 
     return render(request, "booking/host_bookings_list.html", {"bookings": bookings})
 
@@ -768,6 +1004,28 @@ def host_booking_detail_view(request, booking_id):
         status__in=[HostBooking.Status.CONFIRMED, HostBooking.Status.COMPLETED],
     ).exists()
 
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        return JsonResponse({
+            "booking": {
+                "id": str(booking.id),
+                "client_username": booking.user.username,
+                "client_age": client_age,
+                "client_avg_rating": client_avg_rating,
+                "has_kyc": bool(client_kyc),
+                "start_datetime": booking.start_datetime.isoformat() if booking.start_datetime else None,
+                "duration_display": booking.rate.get_duration_type_display() if booking.rate else None,
+                "notes": booking.notes,
+                "status": booking.status,
+                "status_display": booking.get_status_display(),
+                "total_cost": float(booking.total_cost),
+                "currency": booking.currency,
+                "meeting_location": booking.meeting_location,
+                "meeting_latitude": float(booking.meeting_latitude) if booking.meeting_latitude else None,
+                "meeting_longitude": float(booking.meeting_longitude) if booking.meeting_longitude else None,
+            },
+            "has_accepted_booking": has_accepted_booking,
+        })
+
     return render(
         request,
         "booking/host_booking_detail.html",
@@ -795,11 +1053,20 @@ def host_booking_action_view(request, booking_id):
 
         if action == "accept" and booking.status == HostBooking.Status.PENDING:
             meeting_location = request.POST.get("meeting_location", "").strip()
+            meeting_latitude = request.POST.get("meeting_latitude", "").strip()
+            meeting_longitude = request.POST.get("meeting_longitude", "").strip()
 
             booking.status = HostBooking.Status.CONFIRMED
             booking.meeting_location = meeting_location
+            if meeting_latitude and meeting_longitude:
+                try:
+                    from decimal import Decimal
+                    booking.meeting_latitude = Decimal(meeting_latitude)
+                    booking.meeting_longitude = Decimal(meeting_longitude)
+                except:
+                    pass
 
-            if meeting_location:
+            if meeting_location or (meeting_latitude and meeting_longitude):
                 from django.utils import timezone
 
                 booking.location_shared_at = timezone.now()
@@ -858,6 +1125,12 @@ def host_booking_action_view(request, booking_id):
                 body=f"Mohon maaf, {request.user.username} MENOLAK pesanan privat Anda. Dana telah dikembalikan ke dompet Anda.",
             )
 
+        if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+            return JsonResponse({"status": "success", "message": "Action diproses.", "booking_status": booking.status})
+
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        return JsonResponse({"status": "error", "message": "Method not allowed"}, status=405)
+
     return redirect("booking:host_booking_detail", booking_id=booking_id)
 
 
@@ -884,6 +1157,64 @@ def token_api(request):
         }
     )
 
+@login_required
+@require_GET
+def calculate_price_api(request):
+    """
+    Menghitung harga geo-currency untuk frontend Nuxt.
+    Menerima query parameter: rate_id, pay_currency (opsional).
+    """
+    from .models import HostBookingRate
+    from apps.payments.services import ExchangeRateService
+    from decimal import Decimal
+
+    rate_id = request.GET.get("rate_id")
+    pay_currency = request.GET.get("pay_currency")
+    
+    if not rate_id:
+        return JsonResponse({"error": "rate_id is required"}, status=400)
+        
+    try:
+        rate = HostBookingRate.objects.get(id=rate_id)
+        host_currency = rate.currency
+        host_price = rate.price
+        
+        target_currency = pay_currency if pay_currency else host_currency
+        
+        if host_currency == target_currency:
+            exchange_rate = Decimal("1.0")
+            final_price = host_price
+        else:
+            try:
+                rate_value = ExchangeRateService.get_rate(host_currency, target_currency)
+                exchange_rate = Decimal(str(rate_value))
+                
+                # Tambahkan spread platform (seperti di JS: 1.05)
+                platform_spread_multiplier = Decimal("1.05")
+                exchange_rate = exchange_rate * platform_spread_multiplier
+                final_price = host_price * exchange_rate
+            except Exception:
+                exchange_rate = Decimal("1.0")
+                target_currency = host_currency
+                final_price = host_price
+                
+        # Format ke 2 desimal
+        from decimal import ROUND_HALF_UP
+        final_price = final_price.quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+        
+        return JsonResponse({
+            "original_price": float(host_price),
+            "original_currency": host_currency,
+            "target_currency": target_currency,
+            "exchange_rate": float(exchange_rate),
+            "final_price": float(final_price)
+        })
+        
+    except HostBookingRate.DoesNotExist:
+        return JsonResponse({"error": "Rate not found"}, status=404)
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
 
 @login_required
 def private_call_view(request, booking_id):
@@ -899,6 +1230,8 @@ def private_call_view(request, booking_id):
     )
 
     if booking.status != HostBooking.Status.CONFIRMED:
+        if request.headers.get("Accept") == "application/json":
+            return JsonResponse({"status": "error", "message": "Sesi private call hanya bisa dimulai setelah booking dikonfirmasi."}, status=400)
         messages.error(
             request,
             "Sesi private call hanya bisa dimulai setelah booking dikonfirmasi.",
@@ -906,6 +1239,18 @@ def private_call_view(request, booking_id):
         return redirect("booking:dashboard")
 
     is_host = request.user == booking.host
+
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        return JsonResponse({
+            "booking": {
+                "id": booking.id,
+                "host_username": booking.host.username,
+                "client_username": booking.user.username,
+                "status": booking.status,
+            },
+            "is_host": is_host,
+            "current_user": request.user.username
+        })
 
     return render(
         request, "booking/private_call.html", {"booking": booking, "is_host": is_host}
@@ -926,6 +1271,8 @@ def host_booking_noshow_view(request, booking_id):
     booking = get_object_or_404(HostBooking, id=booking_id, host=request.user)
 
     if booking.status != HostBooking.Status.CONFIRMED:
+        if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+            return JsonResponse({"status": "error", "message": "Pesanan tidak dapat dibatalkan."}, status=400)
         messages.error(request, "Pesanan tidak dapat dibatalkan.")
         return redirect("booking:host_booking_detail", booking_id=booking_id)
 
@@ -975,10 +1322,11 @@ def host_booking_noshow_view(request, booking_id):
             notes="Earning 65% karena Klien No-Show",
         )
 
-    messages.success(
-        request,
-        "Pemesanan dibatalkan karena Klien tidak hadir. Dana kompensasi telah masuk ke dompet Anda.",
-    )
+    msg = "Pemesanan dibatalkan karena Klien tidak hadir. Dana kompensasi telah masuk ke dompet Anda."
+    if request.headers.get("Accept") == "application/json" or request.content_type == "application/json":
+        return JsonResponse({"status": "success", "message": msg, "booking_status": booking.status})
+        
+    messages.success(request, msg)
     return redirect("booking:host_bookings_list")
 
 

@@ -22,12 +22,13 @@ var htmlTagRegex = regexp.MustCompile(`<[^>]*>`)
 
 // ViewerHandler handles WebSocket connections for stream interactions.
 type ViewerHandler struct {
-	hub   *ws.Hub
-	redis *redis.Client
+	hub    *ws.Hub
+	redis  *redis.Client
+	modURL string
 }
 
-func NewViewerHandler(hub *ws.Hub, redis *redis.Client) *ViewerHandler {
-	return &ViewerHandler{hub: hub, redis: redis}
+func NewViewerHandler(hub *ws.Hub, redis *redis.Client, modURL string) *ViewerHandler {
+	return &ViewerHandler{hub: hub, redis: redis, modURL: modURL}
 }
 
 // sanitize membersihkan konten dari tag HTML dan karakter berbahaya.
@@ -43,9 +44,9 @@ func sanitize(s string) string {
 
 // checkModeration mengirim teks ke Django AI Moderation endpoint.
 // Mengembalikan (lolos, alasan).
-func checkModeration(text string) (bool, string) {
+func (h *ViewerHandler) checkModeration(text string) (bool, string) {
 	reqBody, _ := json.Marshal(map[string]string{"text": text})
-	resp, err := http.Post("http://localhost:8000/api/v1/moderation/check/", "application/json", bytes.NewBuffer(reqBody))
+	resp, err := http.Post(h.modURL, "application/json", bytes.NewBuffer(reqBody))
 	if err != nil {
 		// Jika service down, izinkan pesan lewat (fail-open)
 		return true, ""
@@ -112,7 +113,7 @@ func (h *ViewerHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) 
 			}
 
 			// Moderasi konten via Django AI
-			if ok, reason := checkModeration(content); !ok {
+			if ok, reason := h.checkModeration(content); !ok {
 				errResp, _ := json.Marshal(map[string]interface{}{
 					"type":    "error",
 					"room_id": streamID,

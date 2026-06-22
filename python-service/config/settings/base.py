@@ -292,10 +292,27 @@ EMAIL_HOST_PASSWORD = config("EMAIL_HOST_PASSWORD", default="")
 EMAIL_USE_TLS = config("EMAIL_USE_TLS", default=True, cast=bool)
 DEFAULT_FROM_EMAIL = config("DEFAULT_FROM_EMAIL", default="noreply@javahade.app")
 
+# Payment settings
+DEFAULT_PAYMENT_PROVIDER = config("DEFAULT_PAYMENT_PROVIDER", default="stripe")
+STRIPE_SECRET_KEY = config("STRIPE_SECRET_KEY", default="")
+STRIPE_WEBHOOK_SECRET = config("STRIPE_WEBHOOK_SECRET", default="")
+
 # =============================================================================
-# Storage — S3 / MinIO
+# Storage — S3 / MinIO (For Video/Streaming) & Box SDK (Default Media)
 # =============================================================================
 
+# Default to Box for all generic media (Images, KYC docs, Avatars)
+DEFAULT_FILE_STORAGE = "common.storage.BoxStorage"
+
+# --- Box Storage Settings ---
+# We will use either JWT Config Path or Developer Token
+BOX_JWT_CONFIG_PATH = config("BOX_JWT_CONFIG_PATH", default="")
+BOX_DEVELOPER_TOKEN = config("BOX_DEVELOPER_TOKEN", default="")
+BOX_CLIENT_ID = config("BOX_CLIENT_ID", default="")
+BOX_CLIENT_SECRET = config("BOX_CLIENT_SECRET", default="")
+BOX_ROOT_FOLDER_ID = config("BOX_ROOT_FOLDER_ID", default="0")
+
+# --- S3 Storage Settings (Fallback / Video Storage) ---
 AWS_ACCESS_KEY_ID = config("AWS_ACCESS_KEY_ID", default="minioadmin")
 AWS_SECRET_ACCESS_KEY = config("AWS_SECRET_ACCESS_KEY", default="minioadmin")
 AWS_STORAGE_BUCKET_NAME = config("AWS_STORAGE_BUCKET_NAME", default="javahade-media")
@@ -315,8 +332,9 @@ REDIS_PUBSUB_URL = config("REDIS_URL", default="redis://localhost:6379/0")
 # =============================================================================
 # Groq AI Integration
 # =============================================================================
-# AI Configuration
-GROQ_API_KEY = config("GROQ_API_KEY", default="")
+# OpenRouter AI Integration
+# Digunakan untuk analisis KYC (KTP & Wajah) dengan Llama Vision
+OPENROUTER_API_KEY = config("OPENROUTER_API_KEY", default="")
 OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 
 # External APIs
@@ -325,8 +343,8 @@ FREECURRENCY_API_KEY = config("FREECURRENCY_API_KEY", default="")
 # =============================================================================
 # PAYPAL CONFIGURATION
 # =============================================================================
-PAYPAL_CLIENT_ID = config("PAYPAL_CLIENT_ID", default="mock-client-id")
-PAYPAL_SECRET = config("PAYPAL_SECRET", default="mock-secret")
+PAYPAL_CLIENT_ID = config("PAYPAL_CLIENT_ID", default="")
+PAYPAL_SECRET = config("PAYPAL_SECRET", default="")
 PAYPAL_MODE = config("PAYPAL_MODE", default="sandbox") # "sandbox" or "live"
 
 # =============================================================================
@@ -336,3 +354,8 @@ OPENAI_API_KEY = config("OPENAI_API_KEY", default="")
 GOOGLE_APPLICATION_CREDENTIALS = config("GOOGLE_APPLICATION_CREDENTIALS", default="")
 
 CURRENCY_API_KEY = config("CURRENCY_API_KEY", default="")
+
+# =============================================================================
+# VideoSDK
+# =============================================================================
+VIDEOSDK_TOKEN = config("VIDEOSDK_TOKEN")

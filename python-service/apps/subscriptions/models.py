@@ -149,3 +149,17 @@ class CreatorShare(models.Model):
 
     def __str__(self):
         return f"{self.investor.username} owns {self.shares_count} shares of {self.creator.username}"
+
+class ChatAccess(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chat_accesses_bought')
+    host = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='chat_accesses_sold')
+    price_paid = models.DecimalField(max_digits=12, decimal_places=2)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'chat_accesses'
+        unique_together = ['user', 'host']
+
+    def __str__(self):
+        return f'{self.user.username} unlocked chat with {self.host.username}'
+

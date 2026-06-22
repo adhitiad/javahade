@@ -1,8 +1,8 @@
 import logging
 import base64
 import json
+import requests
 from django.conf import settings
-from groq import Groq
 
 logger = logging.getLogger(__name__)
 
@@ -15,16 +15,16 @@ def encode_image(image_field):
         encoded = base64.b64encode(image_field.read()).decode("utf-8")
         return encoded
     except Exception as e:
-        logger.error(f"[Groq AI] Error saat mengkodekan gambar: {e}")
+        logger.error(f"[OpenRouter AI] Error saat mengkodekan gambar: {e}")
         return None
     finally:
         if image_field:
             image_field.close()
 
-def verify_kyc_with_groq(kyc_document_id):
+def verify_kyc_with_openrouter(kyc_document_id):
     """
-    Pemanggilan API Asli ke Groq (Llama-Vision) untuk KYC.
-    Mengirimkan KTP, Selfie, dan foto Portfolio ke Groq untuk diperiksa.
+    Pemanggilan API Asli ke OpenRouter untuk KYC.
+    Mengirimkan KTP, Selfie, dan foto Portfolio ke OpenRouter untuk diperiksa.
     """
     # pyrefly: ignore [missing-import]
     from apps.accounts.models import KYCDocument, CreatorProfile, CreatorPhoto
@@ -37,7 +37,7 @@ def verify_kyc_with_groq(kyc_document_id):
         portfolio_photo = CreatorPhoto.objects.filter(profile__user=user).first()
         portfolio_count = CreatorPhoto.objects.filter(profile__user=user).count()
         
-        logger.info(f"[Groq AI] Mengenkode KTP, Selfie, dan 1 Foto Portfolio untuk {user.username}...")
+        logger.info(f"[OpenRouter AI] Mengenkode KTP, Selfie, dan 1 Foto Portfolio untuk {user.username}...")
         
         base64_ktp = encode_image(kyc.document_file)
         base64_selfie = encode_image(kyc.selfie_file)
@@ -49,19 +49,23 @@ def verify_kyc_with_groq(kyc_document_id):
             kyc.save()
             return
             
-        logger.info(f"[Groq AI] Mengirim permintaan ke Groq Vision (llama)...")
+        logger.info(f"[OpenRouter AI] Mengirim permintaan ke OpenRouter...")
         
         # Jika tidak ada API key, gunakan mode simulasi (fallback)
-        api_key = getattr(settings, "GROQ_API_KEY", "")
-        if not api_key or api_key == "gsk_your_groq_api_key_here":
-            logger.warning("[Groq AI] GROQ_API_KEY tidak diatur. Menggunakan simulasi (selalu lolos).")
+        api_key = getattr(settings, "OPENROUTER_API_KEY", "")
+        if not api_key:
+            logger.warning("[OpenRouter AI] OPENROUTER_API_KEY tidak diatur. Menggunakan simulasi (selalu lolos).")
             is_valid = True
-            notes = "AI Groq (Simulasi): ID Valid. Wajah cocok."
+            notes = "AI OpenRouter (Simulasi): ID Valid. Wajah cocok."
         else:
-            # Panggil Groq API Asli
-            client = Groq(api_key=api_key)
-            
-            # Gunakan Vision Model untuk menganalisis gambar KTP dan Selfie secara langsung
+            # Panggil OpenRouter API Asli
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "HTTP-Referer": "http://localhost:8000",
+                "X-Title": "Javahade Platform",
+                "Content-Type": "application/json"
+            }
             messages = [
                 {
                     "role": "user",
@@ -99,28 +103,34 @@ def verify_kyc_with_groq(kyc_document_id):
                     }
                 })
             
-            completion = client.chat.completions.create(
-                model="llama-3.2-90b-vision-preview",
-                messages=messages,  # type: ignore
-                temperature=0.1,
-                max_tokens=256,
-            )
+            payload = {
+                "model": "meta-llama/llama-3.2-90b-vision-instruct",
+                "messages": messages,
+                "temperature": 0.1,
+                "max_tokens": 256
+            }
             
-            response_text = completion.choices[0].message.content or ""
-            logger.info(f"[Groq AI] Response: {response_text}")
-            
-            # Parsing JSON Response
-            try:
-                # Bersihkan markdown json jika ada
-                clean_text = response_text.replace("```json", "").replace("```", "").strip()
-                result_json = json.loads(clean_text)
-                is_valid = result_json.get("is_valid", False)
-                notes = result_json.get("reason", "Alasan tidak terdefinisi dari Groq.")
-                notes = f"AI Groq: {notes}"
-            except Exception as json_err:
-                logger.error(f"[Groq AI] Gagal parsing JSON: {json_err}")
+            response = requests.post(url, headers=headers, json=payload)
+            if response.status_code == 200:
+                resp_json = response.json()
+                response_text = resp_json["choices"][0]["message"]["content"] or ""
+                logger.info(f"[OpenRouter AI] Response: {response_text}")
+                
+                # Parsing JSON Response
+                try:
+                    clean_text = response_text.replace("```json", "").replace("```", "").strip()
+                    result_json = json.loads(clean_text)
+                    is_valid = result_json.get("is_valid", False)
+                    notes = result_json.get("reason", "Alasan tidak terdefinisi dari OpenRouter.")
+                    notes = f"AI OpenRouter: {notes}"
+                except Exception as json_err:
+                    logger.error(f"[OpenRouter AI] Gagal parsing JSON: {json_err}")
+                    is_valid = False
+                    notes = f"AI OpenRouter Error: Gagal menginterpretasikan balasan JSON. Raw: {response_text}"
+            else:
+                logger.error(f"[OpenRouter AI] Error HTTP {response.status_code}: {response.text}")
                 is_valid = False
-                notes = f"AI Groq Error: Gagal menginterpretasikan balasan JSON. Raw: {response_text}"
+                notes = f"AI OpenRouter API Error: {response.status_code}"
             
         # Update KYC Status
         if is_valid:
@@ -133,11 +143,11 @@ def verify_kyc_with_groq(kyc_document_id):
             if profile:
                 profile.is_approved = True
                 profile.save()
-                logger.info(f"CreatorProfile {user.username} otomatis di-approve oleh Groq AI.")
+                logger.info(f"CreatorProfile {user.username} otomatis di-approve oleh OpenRouter AI.")
         else:
             kyc.status = KYCDocument.Status.REJECTED
             kyc.reviewer_notes = notes
             kyc.save()
             
     except Exception as e:
-        logger.error(f"[Groq AI] Error saat verifikasi KYC: {e}")
+        logger.error(f"[OpenRouter AI] Error saat verifikasi KYC: {e}")

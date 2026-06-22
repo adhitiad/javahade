@@ -11,7 +11,7 @@ type ChatMessage struct {
 	RoomID         string                 `json:"room_id" bson:"room_id"`
 	SenderID       string                 `json:"sender_id" bson:"sender_id"`
 	SenderUsername string                 `json:"sender_username" bson:"sender_username"`
-	Type           string                 `json:"type" bson:"type"` // text, image, video, gift, system
+	Type           string                 `json:"type" bson:"type"` // text, image, video, gift, system, location
 	Content        string                 `json:"content" bson:"content"`
 	MediaURL       string                 `json:"media_url,omitempty" bson:"media_url,omitempty"`
 	Gift           *GiftData              `json:"gift,omitempty" bson:"gift,omitempty"`
