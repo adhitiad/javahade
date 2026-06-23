@@ -45,7 +45,7 @@ def stream_list(request):
                 "ticket_price_usd": float(s.ticket_price_usd),
                 "is_family_only": s.is_family_only,
                 "status": s.status,
-                "viewer_count": s.viewer_count,
+                "viewer_count": s.viewers_count,
                 "created_at": s.created_at.isoformat(),
                 "duration": "00:00:00"
             })
@@ -127,7 +127,7 @@ def stream_detail(request, slot_id):
             "ticket_price_usd": float(stream.ticket_price_usd),
             "is_family_only": stream.is_family_only,
             "status": stream.status,
-            "viewer_count": stream.viewer_count,
+            "viewer_count": stream.viewers_count,
             "has_ticket": has_ticket
         })
 
@@ -173,7 +173,7 @@ def stream_watch(request, stream_id):
                 "host": stream.host.username,
                 "title": stream.title,
                 "status": stream.status,
-                "viewer_count": stream.viewer_count,
+                "viewer_count": stream.viewers_count,
                 "stream_key": stream.stream_key,
             },
             "is_host": stream.host == request.user,
@@ -239,3 +239,44 @@ class OMEAdmissionWebhookView(APIView):
                 return Response({"allowed": False, "reason": "Stream not found"}, status=404)
 
         return Response({"allowed": False, "reason": "Unknown direction"}, status=400)
+
+class EndLiveStreamAPIView(APIView):
+    """POST /api/v1/streaming/<id>/end/"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, stream_id):
+        stream = get_object_or_404(LiveStream, id=stream_id, is_deleted=False)
+        
+        if stream.host != request.user:
+            return Response({"error": "Only host can end the stream"}, status=403)
+            
+        if stream.status == LiveStream.Status.ENDED:
+            return Response({"error": "Stream already ended"}, status=400)
+            
+        stream.status = LiveStream.Status.ENDED
+        stream.save()
+        
+        # 1. Create Post (Auto-Archiving Video to Feed)
+        from apps.content.models import Post
+        mock_vod_url = f"https://videosdk.live/vod/archives/{stream.stream_key}.mp4"
+        post = Post.objects.create(
+            creator=stream.host,
+            content_type=Post.ContentType.VIDEO,
+            title=f"VOD: {stream.title}",
+            body=stream.description or f"Siaran ulang (VOD) dari {stream.title}",
+            media_url=mock_vod_url,
+            is_published=True
+        )
+        
+        # 2. Publish stream_ended event to Redis to redirect viewers
+        from common.redis_pubsub import publish_event
+        publish_event(
+            channel=f"notification:room:{stream.host.username}",
+            event_type="stream_ended",
+            data={
+                "message": "Stream has ended",
+                "post_id": str(post.id)
+            }
+        )
+        
+        return Response({"message": "Stream ended and VOD generated", "post_id": str(post.id)}, status=200)

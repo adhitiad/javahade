@@ -2,12 +2,14 @@
 // Auth Store — Zustand state management for authentication
 // Django login returns tokens in HttpOnly cookies (not JSON body)
 // ============================================================
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
 import { persist } from "zustand/middleware";
+import { createZustandContext } from "./factory";
 import type { User, CreatorProfile } from "@/types";
 import { django, refreshAccessToken, clearTokens } from "@/lib/api";
+import { userResponseSchema, creatorProfileResponseSchema } from "@/schemas/responses";
 
-interface AuthState {
+export interface AuthState {
   user: User | null;
   creatorProfile: CreatorProfile | null;
   isAuthenticated: boolean;
@@ -32,7 +34,7 @@ interface AuthState {
   clearError: () => void;
 }
 
-export const useAuthStore = create<AuthState>()(
+export const createAuthStore = () => createStore<AuthState>()(
   persist(
     (set, get) => ({
       user: null,
@@ -104,7 +106,7 @@ export const useAuthStore = create<AuthState>()(
       fetchUser: async () => {
         set({ isLoading: true });
         try {
-          const user = await django.get<User>("/users/me/");
+          const user = await django.get<User>("/users/me/", userResponseSchema);
           set({ user, isAuthenticated: true, isLoading: false });
 
           if (user.role === "host") {
@@ -117,7 +119,7 @@ export const useAuthStore = create<AuthState>()(
 
       fetchCreatorProfile: async () => {
         try {
-          const profile = await django.get<CreatorProfile>("/creators/me/");
+          const profile = await django.get<CreatorProfile>("/creators/me/", creatorProfileResponseSchema);
           set({ creatorProfile: profile });
         } catch {
           set({ creatorProfile: null });
@@ -129,7 +131,9 @@ export const useAuthStore = create<AuthState>()(
         if (user) {
           const updated = { ...user, ...data };
           set({ user: updated });
-          localStorage.setItem("user", JSON.stringify(updated));
+          if (typeof window !== "undefined") {
+            localStorage.setItem("user", JSON.stringify(updated));
+          }
         }
       },
 
@@ -144,3 +148,5 @@ export const useAuthStore = create<AuthState>()(
     },
   ),
 );
+
+export const { Provider: AuthStoreProvider, useStoreHook: useAuthStore } = createZustandContext<AuthState>();

@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Send, Paperclip, ArrowLeft, Circle, Check, CheckCheck, MapPin, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';

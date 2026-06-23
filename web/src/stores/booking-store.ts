@@ -2,11 +2,14 @@
 // Booking Store — Zustand state management for bookings
 // Uses Go Booking Service at http://localhost:3333/api/v1/bookings
 // ============================================================
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
+import { createZustandContext } from "./factory";
 import type { Booking, BookingSlot } from "@/types";
 import { booking } from "@/lib/api";
+import { z } from "zod";
+import { bookingSlotResponseSchema, bookingResponseSchema } from "@/schemas/responses";
 
-interface BookingState {
+export interface BookingState {
   slots: BookingSlot[];
   myBookings: Booking[];
   isLoading: boolean;
@@ -29,7 +32,7 @@ interface BookingState {
   clearError: () => void;
 }
 
-export const useBookingStore = create<BookingState>()((set, get) => ({
+export const createBookingStore = () => createStore<BookingState>()((set, get) => ({
   slots: [],
   myBookings: [],
   isLoading: false,
@@ -39,7 +42,7 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
     set({ isLoading: true });
     try {
       const params = creatorId ? `?creator_id=${creatorId}` : "";
-      const res = await booking.get<BookingSlot[]>(`/bookings/slots${params}`);
+      const res = await booking.get<BookingSlot[]>(`/bookings/slots${params}`, z.array(bookingSlotResponseSchema));
       set({ slots: res, isLoading: false });
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });
@@ -49,7 +52,7 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
   createSlot: async (data) => {
     set({ isLoading: true, error: null });
     try {
-      const slot = await booking.post<BookingSlot>("/bookings/slots", data);
+      const slot = await booking.post<BookingSlot>("/bookings/slots", data, bookingSlotResponseSchema);
       set((state) => ({ slots: [...state.slots, slot], isLoading: false }));
       return slot;
     } catch (err) {
@@ -61,7 +64,7 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
   fetchMyBookings: async () => {
     set({ isLoading: true });
     try {
-      const res = await booking.get<Booking[]>("/bookings/my");
+      const res = await booking.get<Booking[]>("/bookings/my", z.array(bookingResponseSchema));
       set({ myBookings: res, isLoading: false });
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });
@@ -73,7 +76,7 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
     try {
       const bookingRes = await booking.post<Booking>("/bookings/reserve", {
         slot_id: slotId,
-      });
+      }, bookingResponseSchema);
       set((state) => ({
         myBookings: [...state.myBookings, bookingRes],
         isLoading: false,
@@ -112,3 +115,5 @@ export const useBookingStore = create<BookingState>()((set, get) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+export const { Provider: BookingStoreProvider, useStoreHook: useBookingStore } = createZustandContext<BookingState>();

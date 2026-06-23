@@ -219,8 +219,52 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 			msgType = "text"
 		}
 
-		// --- MODERASI KONTEN VIA DJANGO API ---
-		// Hanya moderasi pesan bertipe teks
+		processAndBroadcast := func() *model.ChatMessage {
+			// Gunakan username asli dari auth token (client.Username) untuk mencegah spoofing
+			username := client.Username
+
+			// Simpan ke MongoDB
+			chatMsg := &model.ChatMessage{
+				RoomID:         msg.RoomID,
+				SenderID:       client.UserID,
+				SenderUsername: username,
+				Type:           msgType,
+				Content:        content,
+			}
+
+			if mediaURL, ok := msg.Payload["media_url"].(string); ok {
+				chatMsg.MediaURL = sanitizeContent(mediaURL)
+			}
+			
+			if meta, ok := msg.Payload["metadata"].(map[string]interface{}); ok {
+				chatMsg.Metadata = meta
+			}
+
+			h.messageSvc.SaveMessage(context.Background(), chatMsg)
+
+			// Broadcast ke room
+			response := model.WSMessage{
+				Type:   "message",
+				RoomID: msg.RoomID,
+				Payload: map[string]interface{}{
+					"id":         chatMsg.ID,
+					"sender_id":  client.UserID,
+					"username":   username,
+					"type":       msgType,
+					"content":    content,
+					"metadata":   chatMsg.Metadata,
+					"created_at": chatMsg.CreatedAt.Format(time.RFC3339),
+				},
+				Timestamp: time.Now().Unix(),
+			}
+			data, _ := json.Marshal(response)
+			h.Broadcast <- RoomMessage{RoomID: msg.RoomID, Data: data}
+			return chatMsg
+		}
+
+		chatMsg := processAndBroadcast()
+
+		// --- MODERASI KONTEN VIA DJANGO API (Post-Moderation) ---
 		if msgType == "text" {
 			reqBody, _ := json.Marshal(map[string]string{"text": content})
 
@@ -229,80 +273,48 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 				modURL = "http://python-api:8000/api/v1/moderation/check/"
 			}
 			
-			// Optimasi: Gunakan Timeout 2 Detik agar WebSocket Client tidak Freeze
-			httpClient := &http.Client{Timeout: 2 * time.Second}
-			resp, err := httpClient.Post(modURL, "application/json", bytes.NewBuffer(reqBody))
+			go func(c *Client, messageContent string, rBody []byte, roomID string, msgID string) {
+				httpClient := &http.Client{Timeout: 5 * time.Second}
+				resp, err := httpClient.Post(modURL, "application/json", bytes.NewBuffer(rBody))
 
-			if err == nil && resp.StatusCode == http.StatusBadRequest {
-				// Pesan ditolak oleh moderator
-				var respData map[string]interface{}
-				json.NewDecoder(resp.Body).Decode(&respData)
-				reason, _ := respData["reason"].(string)
-				if reason == "" {
-					reason = "Pesan melanggar standar komunitas."
+				if err == nil && resp.StatusCode == http.StatusBadRequest {
+					var respData map[string]interface{}
+					json.NewDecoder(resp.Body).Decode(&respData)
+					reason, _ := respData["reason"].(string)
+					if reason == "" {
+						reason = "Pesan melanggar standar komunitas."
+					}
+
+					// Soft delete the message in MongoDB
+					h.messageSvc.DeleteMessage(context.Background(), msgID)
+
+					// Broadcast message_deleted to everyone in the room
+					deleteEvent := model.WSMessage{
+						Type:   "message_deleted",
+						RoomID: roomID,
+						Payload: map[string]interface{}{
+							"message_id": msgID,
+							"reason":     reason,
+						},
+						Timestamp: time.Now().Unix(),
+					}
+					data, _ := json.Marshal(deleteEvent)
+					h.Broadcast <- RoomMessage{RoomID: roomID, Data: data}
+
+					log.Warn().
+						Str("user_id", c.UserID).
+						Str("content", messageContent).
+						Msg("Pesan dihapus oleh moderasi AI secara post-moderation")
+					if resp != nil {
+						resp.Body.Close()
+					}
+					return // Stop processing
 				}
-
-				rejectResp := model.WSMessage{
-					Type:   "error",
-					RoomID: msg.RoomID,
-					Payload: map[string]interface{}{
-						"message": reason,
-					},
-					Timestamp: time.Now().Unix(),
+				if resp != nil {
+					resp.Body.Close()
 				}
-				data, _ := json.Marshal(rejectResp)
-				client.Send <- data
-
-				log.Warn().
-					Str("user_id", client.UserID).
-					Str("content", content).
-					Msg("Pesan diblokir oleh moderasi AI")
-				return
-			}
-			if resp != nil {
-				resp.Body.Close()
-			}
+			}(client, content, reqBody, msg.RoomID, chatMsg.ID)
 		}
-
-		// Gunakan username asli dari auth token (client.Username) untuk mencegah spoofing
-		username := client.Username
-
-		// Simpan ke MongoDB
-		chatMsg := &model.ChatMessage{
-			RoomID:         msg.RoomID,
-			SenderID:       client.UserID,
-			SenderUsername: username,
-			Type:           msgType,
-			Content:        content,
-		}
-
-		if mediaURL, ok := msg.Payload["media_url"].(string); ok {
-			chatMsg.MediaURL = sanitizeContent(mediaURL)
-		}
-		
-		if meta, ok := msg.Payload["metadata"].(map[string]interface{}); ok {
-			chatMsg.Metadata = meta
-		}
-
-		h.messageSvc.SaveMessage(ctx, chatMsg)
-
-		// Broadcast ke room
-		response := model.WSMessage{
-			Type:   "message",
-			RoomID: msg.RoomID,
-			Payload: map[string]interface{}{
-				"id":         chatMsg.ID,
-				"sender_id":  client.UserID,
-				"username":   username,
-				"type":       msgType,
-				"content":    content,
-				"metadata":   chatMsg.Metadata,
-				"created_at": chatMsg.CreatedAt.Format(time.RFC3339),
-			},
-			Timestamp: time.Now().Unix(),
-		}
-		data, _ := json.Marshal(response)
-		h.Broadcast <- RoomMessage{RoomID: msg.RoomID, Data: data}
 
 	case "typing":
 		response := model.WSMessage{
@@ -401,40 +413,7 @@ func (h *Hub) HandleMessage(client *Client, msg model.WSMessage) {
 		data, _ := json.Marshal(response)
 		h.Broadcast <- RoomMessage{RoomID: msg.RoomID, Data: data}
 
-	case "gift":
-		giftType, _ := msg.Payload["gift_type"].(string)
-		amount, _ := msg.Payload["amount"].(float64)
-		animation, _ := msg.Payload["animation"].(string)
 
-		chatMsg := &model.ChatMessage{
-			RoomID:         msg.RoomID,
-			SenderID:       client.UserID,
-			SenderUsername: client.Username,
-			Type:           "gift",
-			Content:        "",
-			Gift: &model.GiftData{
-				Type:      sanitizeContent(giftType),
-				Amount:    amount,
-				Animation: sanitizeContent(animation),
-			},
-		}
-		h.messageSvc.SaveMessage(ctx, chatMsg)
-
-		response := model.WSMessage{
-			Type:   "gift",
-			RoomID: msg.RoomID,
-			Payload: map[string]interface{}{
-				"sender_id":  client.UserID,
-				"username":   client.Username,
-				"gift_type":  giftType,
-				"amount":     amount,
-				"animation":  animation,
-				"created_at": chatMsg.CreatedAt.Format(time.RFC3339),
-			},
-			Timestamp: time.Now().Unix(),
-		}
-		data, _ := json.Marshal(response)
-		h.Broadcast <- RoomMessage{RoomID: msg.RoomID, Data: data}
 
 	case "join":
 		h.JoinRoom(client, msg.RoomID)
@@ -468,6 +447,51 @@ func (h *Hub) SubscribeNotifications(ctx context.Context) {
 				continue
 			}
 
+			// Targeted routing for room-specific notifications (like secure gifting)
+			if strings.HasPrefix(msg.Channel, "notification:room:") {
+				roomID := strings.TrimPrefix(msg.Channel, "notification:room:")
+				
+				wsType := "notification"
+				var wsPayload map[string]interface{}
+				
+				if event["type"] == "gift" || event["type"] == "bounty" || event["type"] == "stream_ended" {
+					wsType = event["type"].(string)
+					wsPayload = event
+				} else {
+					wsPayload = map[string]interface{}{
+						"channel": msg.Channel,
+						"data":    event,
+					}
+				}
+
+				wsMsg := model.WSMessage{
+					Type:      wsType,
+					RoomID:    roomID,
+					Payload:   wsPayload,
+					Timestamp: time.Now().Unix(),
+				}
+				data, _ := json.Marshal(wsMsg)
+				h.Broadcast <- RoomMessage{RoomID: roomID, Data: data}
+				
+				// Optional: Save the server-verified gift message to MongoDB if data type is "gift"
+				if event["type"] == "gift" {
+					h.messageSvc.SaveMessage(context.Background(), &model.ChatMessage{
+						RoomID:         roomID,
+						SenderID:       event["sender_id"].(string),
+						SenderUsername: event["username"].(string),
+						Type:           "gift",
+						Content:        "",
+						Gift: &model.GiftData{
+							Type:      event["gift_type"].(string),
+							Amount:    event["amount"].(float64),
+							Animation: event["animation"].(string),
+						},
+					})
+				}
+				continue
+			}
+
+			// Broadcast globally for other types
 			wsMsg := model.WSMessage{
 				Type: "notification",
 				Payload: map[string]interface{}{

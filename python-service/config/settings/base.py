@@ -24,12 +24,6 @@ ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="localhost,127.0.0.1", cast=Csv(
 # Application definition
 # =============================================================================
 
-CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-]
-
 DJANGO_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",
@@ -226,6 +220,7 @@ REST_FRAMEWORK = {
         "user": "1000/day"
     },
     "DATETIME_FORMAT": "%Y-%m-%dT%H:%M:%S%z",
+    "EXCEPTION_HANDLER": "common.exceptions.custom_exception_handler",
 }
 
 # =============================================================================
@@ -266,6 +261,8 @@ CORS_ALLOWED_ORIGINS = config(
     default="http://localhost:3000,http://localhost:5173",
     cast=Csv(),
 )
+if isinstance(CORS_ALLOWED_ORIGINS, list) and "*" in CORS_ALLOWED_ORIGINS:
+    CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
 # =============================================================================

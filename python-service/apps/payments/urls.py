@@ -4,7 +4,7 @@ from .views import (
     EarningsView, RequestPayoutView, WebhookView,
     PayPalCreateOrderView, PayPalCaptureOrderView,
     VerifyCryptoTransactionView, VirtualGiftListAPIView, SendGiftAPIView,
-    ExchangeRatesAPIView
+    ExchangeRatesAPIView, AnalyticsDashboardAPIView
 )
 
 urlpatterns = [
@@ -19,4 +19,5 @@ urlpatterns = [
     path("gifts/", VirtualGiftListAPIView.as_view(), name="gifts-list"),
     path("gifts/send/", SendGiftAPIView.as_view(), name="gifts-send"),
     path("exchange-rates/", ExchangeRatesAPIView.as_view(), name="exchange-rates"),
+    path("analytics/dashboard/", AnalyticsDashboardAPIView.as_view(), name="analytics-dashboard"),
 ]

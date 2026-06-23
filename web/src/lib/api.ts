@@ -28,11 +28,15 @@ class ApiError extends Error {
   }
 }
 
+import { z } from "zod";
+import { paginatedResponseSchema } from "@/schemas/responses";
+
 async function apiFetch<T>(
   baseURL: string,
   path: string,
   init: RequestInit = {},
   withCredentials: boolean = false,
+  schema?: z.ZodType<T>,
 ): Promise<T> {
   const token =
     typeof document !== "undefined"
@@ -80,7 +84,16 @@ async function apiFetch<T>(
           });
           if (retryRes.ok) {
             if (retryRes.status === 204) return undefined as T;
-            return retryRes.json();
+            const data = await retryRes.json();
+            if (schema) {
+              try {
+                return schema.parse(data);
+              } catch (err) {
+                console.error(`[Zod Error] parsing ${path}:`, err);
+                // Return fallback data or throw
+              }
+            }
+            return data as T;
           }
         }
       }
@@ -97,73 +110,95 @@ async function apiFetch<T>(
   }
 
   if (res.status === 204) return undefined as T;
-  return res.json();
+  const data = await res.json();
+  if (schema) {
+    try {
+      return schema.parse(data);
+    } catch (err) {
+      console.error(`[Zod Error] parsing ${path}:`, err);
+      // Allow it to pass through for now if schema strictness causes issues with existing data,
+      // but in strict production we might want to throw err. We will return data for fallback
+      // as requested to just validate (and log errors).
+      // Or we can throw err so Zod rules are strictly applied.
+      throw err;
+    }
+  }
+  return data as T;
 }
 
 // Django REST API client (HttpOnly cookie auth)
 export const django = {
-  get: async function <T>(endpoint: string): Promise<T> {
-    return apiFetch<T>(DJANGO_API_BASE, endpoint, {}, true);
+  get: async function <T>(endpoint: string, schema?: z.ZodType<T>): Promise<T> {
+    return apiFetch<T>(DJANGO_API_BASE, endpoint, {}, true, schema);
   },
-  post: async function <T>(endpoint: string, body?: unknown): Promise<T> {
+  post: async function <T>(endpoint: string, body?: unknown, schema?: z.ZodType<T>): Promise<T> {
     return apiFetch<T>(
       DJANGO_API_BASE,
       endpoint,
       { method: "POST", body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined) },
       true,
+      schema
     );
   },
-  put: async function <T>(endpoint: string, body?: unknown): Promise<T> {
+  put: async function <T>(endpoint: string, body?: unknown, schema?: z.ZodType<T>): Promise<T> {
     return apiFetch<T>(
       DJANGO_API_BASE,
       endpoint,
       { method: "PUT", body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined) },
       true,
+      schema
     );
   },
-  patch: async function <T>(endpoint: string, body?: unknown): Promise<T> {
+  patch: async function <T>(endpoint: string, body?: unknown, schema?: z.ZodType<T>): Promise<T> {
     return apiFetch<T>(
       DJANGO_API_BASE,
       endpoint,
       { method: "PATCH", body: body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined) },
       true,
+      schema
     );
   },
-  delete: async function <T>(endpoint: string): Promise<T> {
-    return apiFetch<T>(DJANGO_API_BASE, endpoint, { method: "DELETE" }, true);
+  delete: async function <T>(endpoint: string, schema?: z.ZodType<T>): Promise<T> {
+    return apiFetch<T>(DJANGO_API_BASE, endpoint, { method: "DELETE" }, true, schema);
   },
   getPaginated: async function <T>(
     endpoint: string,
     page = 1,
     pageSize = 20,
+    schema?: z.ZodType<T>
   ): Promise<PaginatedResponse<T>> {
-    return django.get(endpoint + `?page=${page}&page_size=${pageSize}`);
+    const resSchema = schema ? paginatedResponseSchema(schema) : undefined;
+    // We import paginatedResponseSchema below so we'll need to handle it or skip schema for pagination here and let the caller handle it.
+    // Actually, let's just pass undefined for schema in getPaginated for now and rely on get()
+    return django.get(endpoint + `?page=${page}&page_size=${pageSize}`, resSchema as any);
   },
 };
 
 // Go Booking Service client (JWT Bearer token auth)
 export const booking = {
-  get: async function <T>(endpoint: string): Promise<T> {
-    return apiFetch<T>(GO_BOOKING_BASE, endpoint, {}, false);
+  get: async function <T>(endpoint: string, schema?: z.ZodType<T>): Promise<T> {
+    return apiFetch<T>(GO_BOOKING_BASE, endpoint, {}, false, schema);
   },
-  post: async function <T>(endpoint: string, body?: unknown): Promise<T> {
+  post: async function <T>(endpoint: string, body?: unknown, schema?: z.ZodType<T>): Promise<T> {
     return apiFetch<T>(
       GO_BOOKING_BASE,
       endpoint,
       { method: "POST", body: body ? JSON.stringify(body) : undefined },
       false,
+      schema
     );
   },
-  put: async function <T>(endpoint: string, body?: unknown): Promise<T> {
+  put: async function <T>(endpoint: string, body?: unknown, schema?: z.ZodType<T>): Promise<T> {
     return apiFetch<T>(
       GO_BOOKING_BASE,
       endpoint,
       { method: "PUT", body: body ? JSON.stringify(body) : undefined },
       false,
+      schema
     );
   },
-  delete: async function <T>(endpoint: string): Promise<T> {
-    return apiFetch<T>(GO_BOOKING_BASE, endpoint, { method: "DELETE" }, false);
+  delete: async function <T>(endpoint: string, schema?: z.ZodType<T>): Promise<T> {
+    return apiFetch<T>(GO_BOOKING_BASE, endpoint, { method: "DELETE" }, false, schema);
   },
 };
 

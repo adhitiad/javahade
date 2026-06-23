@@ -3,9 +3,9 @@
   "version": "0.2.0",
   "private": true,
   "scripts": {
-    "dev": "next dev ",
+    "dev": "next dev -H 0.0.0.0",
     "build": "next build && bun x shx cp -r .next/static .next/standalone/.next/ && bun x shx cp -r public .next/standalone/",
-    "start": "NODE_ENV=production bun .next/standalone/server.js 2>&1 | tee server.log",
+    "start": "NODE_ENV=production HOSTNAME=0.0.0.0 bun .next/standalone/server.js 2>&1 | tee server.log",
     "lint": "eslint ."
   },
   "dependencies": {
@@ -82,6 +82,7 @@
     "zustand": "^5.0.6"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@playwright/test": "^1.61.0",
     "@tailwindcss/postcss": "^4",
     "@types/react": "^19",

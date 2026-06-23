@@ -12,8 +12,9 @@ import {
   Tooltip,
   Legend,
   Filler,
+  ArcElement,
 } from "chart.js";
-import { Line, Bar } from "react-chartjs-2";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Users, DollarSign, Activity, Eye, TrendingUp } from "lucide-react";
@@ -30,20 +31,22 @@ ChartJS.register(
   Tooltip,
   Legend,
   Filler,
+  ArcElement,
 );
 
 export default function HostDashboardView() {
   const { user } = useAuthStore();
   const [stats, setStats] = useState({
-    totalEarnings: 0,
-    activeSubscribers: 0,
-    totalViews: 0,
-    engagementRate: 0,
+    totalEarningsIdr: 0,
+    totalEarningsUsd: 0,
+    bountyCompleted: 0,
+    bountyTotal: 0,
+    bountyEarnings: 0,
   });
 
   const [chartData, setChartData] = useState({
-    revenue: { labels: [], data: [] },
-    subscribers: { labels: [], data: [] }
+    revenue: { labels: [] as string[], data: [] as number[] },
+    gifts: { labels: [] as string[], data: [] as number[] }
   });
 
   const revenueData = {
@@ -60,14 +63,20 @@ export default function HostDashboardView() {
     ],
   };
 
-  const subscriberData = {
-    labels: chartData.subscribers.labels,
+  const giftData = {
+    labels: chartData.gifts.labels,
     datasets: [
       {
-        label: "Pelanggan Baru",
-        data: chartData.subscribers.data,
-        backgroundColor: "rgb(16, 185, 129)",
-        borderRadius: 4,
+        label: "Pendapatan Hadiah (IDR)",
+        data: chartData.gifts.data,
+        backgroundColor: [
+          "rgb(244, 63, 94)",
+          "rgb(16, 185, 129)",
+          "rgb(59, 130, 246)",
+          "rgb(168, 85, 247)",
+          "rgb(245, 158, 11)",
+        ],
+        borderWidth: 0,
       },
     ],
   };
@@ -96,17 +105,27 @@ export default function HostDashboardView() {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const res = (await api.get('/api/v1/creators/me/stats/')) as any;
+        const res = (await api.get('/api/v1/payments/analytics/dashboard/')) as any;
         if (res) {
           setStats({
-            totalEarnings: res.totalEarnings || 0,
-            activeSubscribers: res.activeSubscribers || 0,
-            totalViews: res.totalViews || 0,
-            engagementRate: res.engagementRate || 0,
+            totalEarningsIdr: res.overview?.balance_idr || 0,
+            totalEarningsUsd: res.overview?.balance_usd || 0,
+            bountyCompleted: res.bounty_stats?.completed || 0,
+            bountyTotal: res.bounty_stats?.total || 0,
+            bountyEarnings: res.bounty_stats?.earnings_idr || 0,
           });
+          
+          // Parse earnings chart
+          const revLabels = res.earnings_chart?.map((e: any) => e.date) || [];
+          const revData = res.earnings_chart?.map((e: any) => e.total) || [];
+          
+          // Parse gifts breakdown
+          const giftLabels = res.gift_breakdown?.map((g: any) => `${g.icon} ${g.name}`) || [];
+          const giftAmounts = res.gift_breakdown?.map((g: any) => g.total_idr) || [];
+
           setChartData({
-            revenue: res.chartData?.revenue || { labels: [], data: [] },
-            subscribers: res.chartData?.subscribers || { labels: [], data: [] }
+            revenue: { labels: revLabels, data: revData },
+            gifts: { labels: giftLabels, data: giftAmounts }
           });
         }
       } catch (error) {
@@ -146,59 +165,26 @@ export default function HostDashboardView() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              Rp {stats.totalEarnings.toLocaleString("id-ID")}
+              Rp {stats.totalEarningsIdr.toLocaleString("id-ID")}
             </div>
             <p className="text-xs text-emerald-500 flex items-center mt-1">
-              <TrendingUp className="size-3 mr-1" /> +20.1% dari bulan lalu
+              Saldo USD: ${stats.totalEarningsUsd.toFixed(2)}
             </p>
           </CardContent>
         </Card>
         <Card className="bg-zinc-900/50 border-white/10 glass">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-gray-400">
-              Pelanggan Aktif
-            </CardTitle>
-            <Users className="size-4 text-sky-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {stats.activeSubscribers}
-            </div>
-            <p className="text-xs text-emerald-500 flex items-center mt-1">
-              <TrendingUp className="size-3 mr-1" /> +12 user baru
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-zinc-900/50 border-white/10 glass">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">
-              Total Views
-            </CardTitle>
-            <Eye className="size-4 text-purple-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-white">
-              {stats.totalViews.toLocaleString("id-ID")}
-            </div>
-            <p className="text-xs text-emerald-500 flex items-center mt-1">
-              <TrendingUp className="size-3 mr-1" /> +5.4% dari bulan lalu
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-zinc-900/50 border-white/10 glass">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-400">
-              Engagement Rate
+              Bounty Selesai
             </CardTitle>
             <Activity className="size-4 text-rose-500" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-white">
-              {stats.engagementRate}%
+              {stats.bountyCompleted} / {stats.bountyTotal}
             </div>
             <p className="text-xs text-rose-500 flex items-center mt-1">
-              <TrendingUp className="size-3 mr-1 rotate-180" /> -1.2% dari bulan
-              lalu
+              Total Pendapatan Bounty: Rp {stats.bountyEarnings.toLocaleString("id-ID")}
             </p>
           </CardContent>
         </Card>
@@ -222,12 +208,12 @@ export default function HostDashboardView() {
         <Card className="bg-zinc-900/50 border-white/10 glass">
           <CardHeader>
             <CardTitle className="text-white text-lg">
-              Pertumbuhan Pelanggan
+              Distribusi Hadiah (Virtual Gifts)
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full">
-              <Bar data={subscriberData} options={chartOptions} />
+          <CardContent className="flex justify-center">
+            <div className="h-[300px] w-full max-w-[300px]">
+              <Doughnut data={giftData} options={{ maintainAspectRatio: false, plugins: { legend: { position: "right", labels: { color: "rgba(255,255,255,0.7)" } } } }} />
             </div>
           </CardContent>
         </Card>

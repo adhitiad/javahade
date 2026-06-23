@@ -2,7 +2,7 @@ from django.urls import path
 from .views import (
     FamilyCreateView, FamilyListView, FamilyDetailView,
     FamilyInviteView, FamilyJoinView, FamilyMemberListView,
-    FamilyFeedView, FamilyShareContentView,
+    FamilyFeedView, FamilyShareContentView, VerifyFamilyMemberAPIView
 )
 
 urlpatterns = [
@@ -14,4 +14,5 @@ urlpatterns = [
     path("<uuid:id>/members/", FamilyMemberListView.as_view(), name="family-members"),
     path("<uuid:id>/feed/", FamilyFeedView.as_view(), name="family-feed"),
     path("<uuid:id>/share/", FamilyShareContentView.as_view(), name="family-share"),
+    path("<uuid:id>/verify-member/", VerifyFamilyMemberAPIView.as_view(), name="family-verify"),
 ]

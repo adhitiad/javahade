@@ -7,7 +7,9 @@ package handler
 
 import (
 	"net/http"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/rs/zerolog/log"
@@ -125,6 +127,36 @@ func (h *ChatHandler) HandleWebSocket(w http.ResponseWriter, r *http.Request) {
 	if len(roomID) > 50 {
 		http.Error(w, `{"detail":"room_id tidak valid"}`, http.StatusBadRequest)
 		return
+	}
+
+	// --- LANGKAH 4B: Otorisasi Khusus Room Keluarga (Family Chat) ---
+	if strings.HasPrefix(roomID, "family_") {
+		familyUUID := strings.TrimPrefix(roomID, "family_")
+		verifyURL := os.Getenv("DJANGO_API_URL")
+		if verifyURL == "" {
+			verifyURL = "http://python-api:8000"
+		}
+		verifyURL += "/api/v1/family/" + familyUUID + "/verify-member/"
+
+		reqVerify, _ := http.NewRequest("GET", verifyURL, nil)
+		reqVerify.Header.Set("Authorization", "Bearer "+tokenStr)
+
+		httpClient := &http.Client{Timeout: 5 * time.Second}
+		resp, err := httpClient.Do(reqVerify)
+		if err != nil || resp.StatusCode != http.StatusOK {
+			log.Warn().
+				Str("user_id", userID).
+				Str("room_id", roomID).
+				Msg("Koneksi ditolak: Bukan anggota grup keluarga ini")
+			http.Error(w, `{"detail":"Akses ditolak: Anda bukan anggota grup keluarga ini."}`, http.StatusForbidden)
+			if resp != nil {
+				resp.Body.Close()
+			}
+			return
+		}
+		if resp != nil {
+			resp.Body.Close()
+		}
 	}
 
 	// --- LANGKAH 5: Upgrade ke WebSocket ---

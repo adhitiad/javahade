@@ -75,3 +75,17 @@ func (s *MessageService) GetMessages(ctx context.Context, roomID string, limit, 
 	return messages, nil
 }
 
+// DeleteMessage soft deletes a message in MongoDB.
+func (s *MessageService) DeleteMessage(ctx context.Context, id string) error {
+	_, err := s.collection.UpdateOne(
+		ctx,
+		bson.M{"_id": id},
+		bson.M{"$set": bson.M{"is_deleted": true, "updated_at": time.Now()}},
+	)
+	if err != nil {
+		log.Error().Err(err).Str("message_id", id).Msg("Failed to delete message")
+		return err
+	}
+	return nil
+}
+

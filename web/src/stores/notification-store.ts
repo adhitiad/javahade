@@ -2,11 +2,12 @@
 // Notification Store — Zustand state for notifications
 // Uses Django REST API at http://localhost:8000/api/v1/notifications
 // ============================================================
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
+import { createZustandContext } from "./factory";
 import type { Notification, PaginatedResponse } from "@/types";
 import { django } from "@/lib/api";
 
-interface NotificationState {
+export interface NotificationState {
   notifications: Notification[];
   unreadCount: number;
   isLoading: boolean;
@@ -19,7 +20,7 @@ interface NotificationState {
   clearError: () => void;
 }
 
-export const useNotificationStore = create<NotificationState>()((set, get) => ({
+export const createNotificationStore = () => createStore<NotificationState>()((set, get) => ({
   notifications: [],
   unreadCount: 0,
   isLoading: false,
@@ -85,3 +86,5 @@ export const useNotificationStore = create<NotificationState>()((set, get) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+export const { Provider: NotificationStoreProvider, useStoreHook: useNotificationStore } = createZustandContext<NotificationState>();

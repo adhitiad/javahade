@@ -145,7 +145,7 @@ class FamilyFeedView(generics.ListAPIView):
     serializer_class = FamilyContentSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
+    def get_queryset(self): # type: ignore
         family_id = self.kwargs["id"]
         # Verify membership
         if not FamilyMember.objects.filter(
@@ -175,9 +175,11 @@ class FamilyShareContentView(APIView):
 
         serializer = ShareContentSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        
+        v_data: dict = serializer.validated_data # type: ignore
 
         try:
-            post = Post.objects.get(id=serializer.validated_data["post_id"])
+            post = Post.objects.get(id=v_data["post_id"])
         except Post.DoesNotExist:
             return Response(
                 {"detail": "Post not found."},
@@ -188,7 +190,7 @@ class FamilyShareContentView(APIView):
             family_id=id, post=post,
             defaults={
                 "shared_by": request.user,
-                "message": serializer.validated_data.get("message", ""),
+                "message": v_data.get("message", ""),
             },
         )
 
@@ -213,3 +215,13 @@ class FamilyShareContentView(APIView):
             FamilyContentSerializer(content, context={"request": request}).data,
             status=status.HTTP_201_CREATED,
         )
+
+class VerifyFamilyMemberAPIView(APIView):
+    """GET /api/v1/families/{id}/verify-member/ — Internal use to verify membership."""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request, id):
+        if FamilyMember.objects.filter(family_id=id, user=request.user).exists():
+            return Response({"allowed": True}, status=status.HTTP_200_OK)
+        return Response({"allowed": False, "detail": "Not a family member."}, status=status.HTTP_403_FORBIDDEN)
+

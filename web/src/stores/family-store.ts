@@ -2,7 +2,8 @@
 // Family Store — Zustand state for family groups and agency
 // Uses Django REST API at http://localhost:8000/api/v1/families
 // ============================================================
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
+import { createZustandContext } from "./factory";
 import type {
   FamilyGroup,
   FamilyMember,
@@ -11,7 +12,7 @@ import type {
 } from "@/types";
 import { django } from "@/lib/api";
 
-interface FamilyState {
+export interface FamilyState {
   families: FamilyGroup[];
   currentFamily: FamilyGroup | null;
   members: FamilyMember[];
@@ -41,7 +42,7 @@ interface FamilyState {
   clearError: () => void;
 }
 
-export const useFamilyStore = create<FamilyState>()((set, get) => ({
+export const createFamilyStore = () => createStore<FamilyState>()((set, get) => ({
   families: [],
   currentFamily: null,
   members: [],
@@ -173,3 +174,5 @@ export const useFamilyStore = create<FamilyState>()((set, get) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+export const { Provider: FamilyStoreProvider, useStoreHook: useFamilyStore } = createZustandContext<FamilyState>();

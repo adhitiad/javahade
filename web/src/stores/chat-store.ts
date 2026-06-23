@@ -1,8 +1,11 @@
+"use client";
+
 // ============================================================
 // Chat Store — Zustand + raw WebSocket for real-time chat
 // Connects to Go Chat Service at ws://localhost:3335/ws/chat
 // ============================================================
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
+import { createZustandContext } from "./factory";
 import type { ChatMessage, ChatConversation } from "@/types";
 import { chatApi } from "@/lib/api";
 
@@ -13,7 +16,7 @@ type WSMessage = {
   timestamp?: number;
 };
 
-interface ChatState {
+export interface ChatState {
   conversations: ChatConversation[];
   currentChat: string | null;
   messages: ChatMessage[];
@@ -34,7 +37,7 @@ interface ChatState {
   clearMessages: () => void;
 }
 
-export const useChatStore = create<ChatState>()((set, get) => ({
+export const createChatStore = () => createStore<ChatState>()((set, get) => ({
   conversations: [],
   currentChat: null,
   messages: [],
@@ -145,6 +148,69 @@ export const useChatStore = create<ChatState>()((set, get) => ({
             const currentChat = get().currentChat;
             if (currentChat) chatMsg.receiver = currentChat;
             set({ messages: [...get().messages, chatMsg] });
+            break;
+          }
+
+          case "message_deleted": {
+            const payload = msg.payload;
+            const messageId = String(payload["message_id"]);
+            const reason = (payload["reason"] as string) || "Dihapus oleh Automod AI";
+            const messages = get().messages.map((m) =>
+              m.id === messageId
+                ? { ...m, body: `[${reason}]`, type: "system" }
+                : m
+            );
+            set({ messages });
+            break;
+          }
+
+          case "bounty": {
+            const payload = msg.payload;
+            const action = payload["action"] as string;
+            let body = `Bounty Update`;
+            if (action === "created") {
+              body = `🎯 New Bounty by ${payload["challenger"]}: ${payload["task_description"]} (Rp ${payload["amount"]})`;
+            } else if (action === "accepted") {
+              body = `🔥 Bounty Accepted by Host!`;
+            } else if (action === "completed") {
+              body = `✅ Bounty Completed! Host earned Rp ${payload["amount"]}`;
+            } else if (action === "rejected") {
+              body = `❌ Bounty Rejected by Host.`;
+            }
+
+            const chatMsg: ChatMessage = {
+              id: String(payload["bounty_id"] || Date.now()) + `-${action}`,
+              sender: String(payload["host"] || "system"),
+              receiver: "",
+              body: body,
+              is_read: true,
+              type: "system", // Show as a system message in UI
+              created_at: new Date().toISOString(),
+            };
+            const currentChat = get().currentChat;
+            if (currentChat) chatMsg.receiver = currentChat;
+            set({ messages: [...get().messages, chatMsg] });
+            break;
+          }
+
+          case "stream_ended": {
+            const payload = msg.payload;
+            const chatMsg: ChatMessage = {
+              id: String(Date.now()),
+              sender: "system",
+              receiver: "",
+              body: `🔴 Tayangan ini telah berakhir. Tayangan ulang (VOD) telah disimpan.`,
+              is_read: true,
+              type: "system",
+              created_at: new Date().toISOString(),
+            };
+            const currentChat = get().currentChat;
+            if (currentChat) chatMsg.receiver = currentChat;
+            set({ messages: [...get().messages, chatMsg] });
+            
+            if (typeof window !== "undefined") {
+              window.dispatchEvent(new CustomEvent('stream_ended_event', { detail: payload }));
+            }
             break;
           }
 
@@ -286,3 +352,5 @@ export const useChatStore = create<ChatState>()((set, get) => ({
 
   clearMessages: () => set({ messages: [], currentChat: null }),
 }));
+
+export const { Provider: ChatStoreProvider, useStoreHook: useChatStore } = createZustandContext<ChatState>();

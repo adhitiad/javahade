@@ -357,131 +357,127 @@ export default function CreatorProfileView() {
       </div>
 
       {/* Buy Chat Modal */}
-      {showBuyChatModal && (
-        <Dialog open={showBuyChatModal} onOpenChange={setShowBuyChatModal}>
-          <DialogContent className="glass border border-white/10 max-w-sm rounded-3xl bg-zinc-950/90 text-white">
-            <DialogHeader className="items-center text-center">
-              <div className="w-16 h-16 bg-pink-500/20 rounded-full flex items-center justify-center mb-4 text-pink-400">
-                <Lock className="size-8" />
-              </div>
-              <DialogTitle className="text-xl font-bold">
-                Buka Kunci Obrolan Pribadi
-              </DialogTitle>
-              <DialogDescription className="text-gray-400 text-sm mt-2">
-                {creatorProfile.display_name} memungut biaya satu kali untuk
-                membuka akses chat pribadi.
-                <br />
-                <span className="text-xs text-gray-500">
-                  (Bebas biaya jika Anda berlangganan)
-                </span>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="bg-black/50 rounded-2xl p-4 my-4 text-center">
-              <div className="text-sm text-gray-400 mb-1">Harga Tiket Chat</div>
-              <div className="text-3xl font-black text-white">Rp 50.000</div>
+      <Dialog open={showBuyChatModal} onOpenChange={setShowBuyChatModal}>
+        <DialogContent className="glass border border-white/10 max-w-sm rounded-3xl bg-zinc-950/90 text-white">
+          <DialogHeader className="items-center text-center">
+            <div className="w-16 h-16 bg-pink-500/20 rounded-full flex items-center justify-center mb-4 text-pink-400">
+              <Lock className="size-8" />
             </div>
-            <DialogFooter className="flex flex-col gap-2 sm:flex-col">
-              <Button
-                className="w-full py-6 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all"
-                onClick={handleBuyChatAccess}
-                disabled={isPaying}
-              >
-                {isPaying ? "Memproses..." : "Bayar & Mulai Chat"}
-              </Button>
-              <Button
-                variant="ghost"
-                className="w-full py-4 text-gray-300 hover:text-white"
-                onClick={() => setShowBuyChatModal(false)}
-              >
-                Batal
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+            <DialogTitle className="text-xl font-bold">
+              Buka Kunci Obrolan Pribadi
+            </DialogTitle>
+            <DialogDescription className="text-gray-400 text-sm mt-2">
+              {creatorProfile.display_name} memungut biaya satu kali untuk
+              membuka akses chat pribadi.
+              <br />
+              <span className="text-xs text-gray-500">
+                (Bebas biaya jika Anda berlangganan)
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-black/50 rounded-2xl p-4 my-4 text-center">
+            <div className="text-sm text-gray-400 mb-1">Harga Tiket Chat</div>
+            <div className="text-3xl font-black text-white">Rp 50.000</div>
+          </div>
+          <DialogFooter className="flex flex-col gap-2 sm:flex-col">
+            <Button
+              className="w-full py-6 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white font-bold rounded-xl shadow-lg shadow-pink-500/25 transition-all"
+              onClick={handleBuyChatAccess}
+              disabled={isPaying}
+            >
+              {isPaying ? "Memproses..." : "Bayar & Mulai Chat"}
+            </Button>
+            <Button
+              variant="ghost"
+              className="w-full py-4 text-gray-300 hover:text-white"
+              onClick={() => setShowBuyChatModal(false)}
+            >
+              Batal
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Report Post Dialog */}
-      {showReportDialog && (
-        <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
-          <DialogContent className="glass border border-white/10 max-w-md rounded-3xl bg-zinc-950/90 text-white">
-            <DialogHeader>
-              <DialogTitle className="text-xl font-bold">
-                Laporkan Postingan
-              </DialogTitle>
-              <DialogDescription className="text-gray-400 text-sm">
-                Mengapa Anda melaporkan postingan ini? Laporan Anda bersifat
-                anonim.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 my-4">
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Alasan Pelaporan
-                </label>
-                <div className="grid grid-cols-1 gap-2">
-                  {[
-                    { value: "spam", label: "Spam / Iklan tidak diinginkan" },
-                    { value: "harassment", label: "Pelecehan / Perundungan" },
-                    {
-                      value: "inappropriate",
-                      label: "Konten Tidak Pantas / Seksual",
-                    },
-                    { value: "copyright", label: "Pelanggaran Hak Cipta" },
-                    { value: "impersonation", label: "Peniruan Identitas" },
-                    { value: "other", label: "Lainnya" },
-                  ].map((r) => (
-                    <button
-                      key={r.value}
-                      type="button"
-                      className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all flex items-center justify-between ${
-                        selectedReportReason === r.value
-                          ? "border-red-500 bg-red-500/10 text-white"
-                          : "border-white/5 bg-white/5 text-gray-300 hover:bg-white/10"
-                      }`}
-                      onClick={() => setSelectedReportReason(r.value)}
-                    >
-                      <span>{r.label}</span>
-                      {selectedReportReason === r.value && (
-                        <span className="size-2 rounded-full bg-red-500 shadow-lg shadow-red-500/50" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
-                  Keterangan Tambahan (Opsional)
-                </label>
-                <textarea
-                  className="w-full min-h-[80px] px-4 py-3 rounded-xl border border-white/5 bg-white/5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all resize-none"
-                  placeholder="Berikan detail tambahan tentang laporan Anda..."
-                  value={reportDescription}
-                  onChange={(e) => setReportDescription(e.target.value)}
-                />
+      <Dialog open={showReportDialog} onOpenChange={setShowReportDialog}>
+        <DialogContent className="glass border border-white/10 max-w-md rounded-3xl bg-zinc-950/90 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold">
+              Laporkan Postingan
+            </DialogTitle>
+            <DialogDescription className="text-gray-400 text-sm">
+              Mengapa Anda melaporkan postingan ini? Laporan Anda bersifat
+              anonim.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 my-4">
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Alasan Pelaporan
+              </label>
+              <div className="grid grid-cols-1 gap-2">
+                {[
+                  { value: "spam", label: "Spam / Iklan tidak diinginkan" },
+                  { value: "harassment", label: "Pelecehan / Perundungan" },
+                  {
+                    value: "inappropriate",
+                    label: "Konten Tidak Pantas / Seksual",
+                  },
+                  { value: "copyright", label: "Pelanggaran Hak Cipta" },
+                  { value: "impersonation", label: "Peniruan Identitas" },
+                  { value: "other", label: "Lainnya" },
+                ].map((r) => (
+                  <button
+                    key={r.value}
+                    type="button"
+                    className={`w-full text-left px-4 py-3 rounded-xl border text-sm transition-all flex items-center justify-between ${
+                      selectedReportReason === r.value
+                        ? "border-red-500 bg-red-500/10 text-white"
+                        : "border-white/5 bg-white/5 text-gray-300 hover:bg-white/10"
+                    }`}
+                    onClick={() => setSelectedReportReason(r.value)}
+                  >
+                    <span>{r.label}</span>
+                    {selectedReportReason === r.value && (
+                      <span className="size-2 rounded-full bg-red-500 shadow-lg shadow-red-500/50" />
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
-            <DialogFooter className="flex gap-2 sm:gap-0">
-              <Button
-                variant="ghost"
-                className="flex-1 py-4 text-gray-300 hover:text-white"
-                onClick={() => {
-                  setShowReportDialog(false);
-                  setReportingPostId(null);
-                }}
-              >
-                Batal
-              </Button>
-              <Button
-                className="flex-1 py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all"
-                onClick={handleReportSubmit}
-                disabled={isSubmittingReport}
-              >
-                {isSubmittingReport ? "Mengirim..." : "Kirim Laporan"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                Keterangan Tambahan (Opsional)
+              </label>
+              <textarea
+                className="w-full min-h-[80px] px-4 py-3 rounded-xl border border-white/5 bg-white/5 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-white/20 transition-all resize-none"
+                placeholder="Berikan detail tambahan tentang laporan Anda..."
+                value={reportDescription}
+                onChange={(e) => setReportDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              className="flex-1 py-4 text-gray-300 hover:text-white"
+              onClick={() => {
+                setShowReportDialog(false);
+                setReportingPostId(null);
+              }}
+            >
+              Batal
+            </Button>
+            <Button
+              className="flex-1 py-4 bg-red-600 hover:bg-red-500 text-white font-bold rounded-xl transition-all"
+              onClick={handleReportSubmit}
+              disabled={isSubmittingReport}
+            >
+              {isSubmittingReport ? "Mengirim..." : "Kirim Laporan"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

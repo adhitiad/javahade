@@ -1,10 +1,11 @@
 // ============================================================
 // UI Store — Zustand state for navigation, theme, modals
 // ============================================================
-import { create } from 'zustand';
+import { createStore } from 'zustand/vanilla';
+import { createZustandContext } from './factory';
 import type { NavPage } from '@/types';
 
-interface UIState {
+export interface UIState {
   sidebarOpen: boolean;
   nsfwAccepted: boolean;
   searchQuery: string;
@@ -21,7 +22,7 @@ interface UIState {
   removeToast: (id: string) => void;
 }
 
-export const useUIStore = create<UIState>()((set) => ({
+export const createUIStore = () => createStore<UIState>()((set) => ({
   sidebarOpen: false,
   nsfwAccepted: typeof window !== 'undefined'
     ? localStorage.getItem('nsfw_accepted') === 'true'
@@ -32,7 +33,7 @@ export const useUIStore = create<UIState>()((set) => ({
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   setSidebarOpen: (open) => set({ sidebarOpen: open }),
   acceptNSFW: () => {
-    localStorage.setItem('nsfw_accepted', 'true');
+    if (typeof window !== 'undefined') localStorage.setItem('nsfw_accepted', 'true');
     set({ nsfwAccepted: true });
   },
   setSearchQuery: (query) => set({ searchQuery: query }),
@@ -46,3 +47,5 @@ export const useUIStore = create<UIState>()((set) => ({
   },
   removeToast: (id) => set((s) => ({ toasts: s.toasts.filter(t => t.id !== id) })),
 }));
+
+export const { Provider: UIStoreProvider, useStoreHook: useUIStore } = createZustandContext<UIState>();

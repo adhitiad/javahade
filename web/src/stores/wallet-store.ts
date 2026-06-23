@@ -2,11 +2,13 @@
 // Wallet Store — Zustand state for wallet/payments
 // Uses Django REST API at http://localhost:8000/api/v1/payments
 // ============================================================
-import { create } from "zustand";
+import { createStore } from "zustand/vanilla";
+import { createZustandContext } from "./factory";
 import type { WalletTransaction, Currency, ExchangeRates } from "@/types";
 import { django } from "@/lib/api";
+import { earningsResponseSchema, exchangeRatesResponseSchema } from "@/schemas/responses";
 
-interface WalletState {
+export interface WalletState {
   transactions: WalletTransaction[];
   exchangeRates: ExchangeRates | null;
   selectedCurrency: Currency;
@@ -46,7 +48,7 @@ interface WalletState {
   clearError: () => void;
 }
 
-export const useWalletStore = create<WalletState>()((set, get) => ({
+export const createWalletStore = () => createStore<WalletState>()((set, get) => ({
   transactions: [],
   exchangeRates: null,
   selectedCurrency: "IDR",
@@ -58,11 +60,10 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
   fetchTransactions: async () => {
     set({ isLoading: true, error: null });
     try {
-      const data = await django.get<{
-        balances: Record<Currency, string>;
-        is_creator: boolean;
-        transactions: any[];
-      }>("/payments/earnings/");
+      const data = await django.get(
+        "/payments/earnings/",
+        earningsResponseSchema
+      );
       const parsedBalances: Record<Currency, number> = {
         USD: Number(data.balances.USD || 0),
         SGD: Number(data.balances.SGD || 0),
@@ -71,7 +72,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
         CNY: Number(data.balances.CNY || 0),
       };
       const mappedTransactions: WalletTransaction[] = data.transactions.map(
-        (tx) => ({
+        (tx: any) => ({
           id: tx.id,
           user: "",
           transaction_type: tx.type === "withdrawal" ? "withdraw" : tx.type,
@@ -96,6 +97,7 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
     try {
       const rates = await django.get<ExchangeRates>(
         "/payments/exchange-rates/",
+        exchangeRatesResponseSchema
       );
       set({ exchangeRates: rates });
     } catch {
@@ -244,3 +246,5 @@ export const useWalletStore = create<WalletState>()((set, get) => ({
   setSelectedCurrency: (currency) => set({ selectedCurrency: currency }),
   clearError: () => set({ error: null }),
 }));
+
+export const { Provider: WalletStoreProvider, useStoreHook: useWalletStore } = createZustandContext<WalletState>();

@@ -1,4 +1,7 @@
-import { create } from "zustand";
+"use client";
+
+import { createStore } from "zustand/vanilla";
+import { createZustandContext } from "./factory";
 import type { LiveStream, StreamBounty } from "@/types";
 import { streamApi } from "@/lib/api";
 
@@ -16,7 +19,7 @@ interface WatchStreamInfo {
   viewer_ip: string;
 }
 
-interface StreamingState {
+export interface StreamingState {
   streams: LiveStream[];
   currentStream: LiveStream | null;
   watchInfo: WatchStreamInfo | null;
@@ -48,7 +51,7 @@ interface StreamingState {
   buyTicket: (streamId: string) => Promise<void>;
 }
 
-export const useStreamingStore = create<StreamingState>()((set, get) => ({
+export const createStreamingStore = () => createStore<StreamingState>()((set, get) => ({
   streams: [],
   currentStream: null,
   watchInfo: null,
@@ -217,3 +220,5 @@ export const useStreamingStore = create<StreamingState>()((set, get) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+export const { Provider: StreamingStoreProvider, useStoreHook: useStreamingStore } = createZustandContext<StreamingState>();

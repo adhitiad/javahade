@@ -319,6 +319,7 @@ class SendGiftAPIView(APIView):
         gift_id = request.data.get('gift_id')
         receiver_username = request.data.get('receiver_username')
         context = request.data.get('context', 'profile')
+        room_id = request.data.get('room_id') # For targeted streaming room broadcast
         
         if not gift_id or not receiver_username:
             return Response({"error": "gift_id and receiver_username required"}, status=400)
@@ -429,6 +430,26 @@ class SendGiftAPIView(APIView):
                 context=context
             )
             
+            # -------------------------------------------------------------
+            # SECURE GIFTING ARCHITECTURE: Publish to Redis instead of letting 
+            # the client send websocket broadcast directly.
+            # -------------------------------------------------------------
+            if room_id:
+                from common.redis_pubsub import publish_event
+                publish_event(
+                    channel=f"notification:room:{room_id}",
+                    event_type="gift",
+                    data={
+                        "sender_id": str(user.id),
+                        "username": sender_name,
+                        "gift_type": gift.name,
+                        "amount": float(price),
+                        "animation": gift.icon,
+                        "room_id": room_id
+                    }
+                )
+            # -------------------------------------------------------------
+            
         return Response({"message": "Gift sent successfully!", "new_balance": str(user.balance_idr)}, status=200)
 
 from .services import ExchangeRateService
@@ -452,6 +473,7 @@ class CreateStreamBountyAPIView(APIView):
         host_username = request.data.get('host_username')
         task_description = request.data.get('task_description')
         amount = request.data.get('amount')
+        room_id = request.data.get('room_id', host_username)
         
         if not host_username or not task_description or not amount:
             return Response({"error": "host_username, task_description, and amount required"}, status=400)
@@ -498,6 +520,20 @@ class CreateStreamBountyAPIView(APIView):
                 status=WalletTransaction.Status.COMPLETED,
                 reference_id=str(bounty.id),
                 notes=f"Escrow for Bounty to {host.username}"
+            )
+            
+            from common.redis_pubsub import publish_event
+            publish_event(
+                channel=f"notification:room:{room_id}",
+                event_type="bounty",
+                data={
+                    "action": "created",
+                    "bounty_id": str(bounty.id),
+                    "challenger": user.username,
+                    "host": host.username,
+                    "amount": float(bounty.amount_idr),
+                    "task_description": bounty.task_description
+                }
             )
             
         return Response({"message": "Bounty created and escrowed", "bounty_id": str(bounty.id)}, status=201)
@@ -574,4 +610,87 @@ class HostActionStreamBountyAPIView(APIView):
                 else:
                     return Response({"error": f"Cannot perform complete from status {bounty.status}"}, status=400)
                 
+            room_id = request.data.get("room_id", bounty.host.username)
+            from common.redis_pubsub import publish_event
+            publish_event(
+                channel=f"notification:room:{room_id}",
+                event_type="bounty",
+                data={
+                    "action": action,
+                    "bounty_id": str(bounty.id),
+                    "host": bounty.host.username,
+                    "challenger": bounty.challenger.username,
+                    "amount": float(bounty.amount_idr)
+                }
+            )
+                
         return Response({"message": f"Bounty marked as {action}", "status": bounty.status}, status=200)
+
+class AnalyticsDashboardAPIView(APIView):
+    """GET /api/v1/payments/analytics/dashboard/"""
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        from django.db.models import Sum, Count
+        from django.db.models.functions import TruncDate
+        from django.utils import timezone
+        import datetime
+        from .models import WalletTransaction, GiftTransaction, StreamBounty
+        
+        user = request.user
+        if user.role != 'host':
+            return Response({"error": "Hanya host yang dapat melihat dashboard analitik"}, status=403)
+            
+        seven_days_ago = timezone.now() - datetime.timedelta(days=7)
+        
+        # 1. Earnings Chart Data
+        earnings = WalletTransaction.objects.filter(
+            user=user, 
+            transaction_type__in=[WalletTransaction.TransactionType.EARNING, WalletTransaction.TransactionType.DEPOSIT],
+            status=WalletTransaction.Status.COMPLETED,
+            created_at__gte=seven_days_ago
+        ).annotate(
+            date=TruncDate('created_at')
+        ).values('date').annotate(
+            total=Sum('amount')
+        ).order_by('date')
+        
+        earnings_chart = [{"date": e['date'].isoformat(), "total": float(e['total'])} for e in earnings]
+        
+        # 2. Gifts Breakdown
+        gifts = GiftTransaction.objects.filter(
+            receiver=user,
+            created_at__gte=seven_days_ago
+        ).values('gift__name', 'gift__icon').annotate(
+            total_net_idr=Sum('net_host_amount_idr'),
+            count=Count('id')
+        ).order_by('-total_net_idr')
+        
+        gift_breakdown = [
+            {
+                "name": g['gift__name'] or "Unknown",
+                "icon": g['gift__icon'] or "",
+                "total_idr": float(g['total_net_idr'] or 0),
+                "count": g['count']
+            } for g in gifts
+        ]
+        
+        # 3. Bounty Stats
+        bounties = StreamBounty.objects.filter(host=user)
+        total_bounties = bounties.count()
+        completed_bounties = bounties.filter(status=StreamBounty.Status.COMPLETED).count()
+        bounty_earnings = bounties.filter(status=StreamBounty.Status.COMPLETED).aggregate(total=Sum('amount_idr'))['total'] or 0
+        
+        return Response({
+            "overview": {
+                "balance_usd": float(user.balance_usd),
+                "balance_idr": float(user.balance_idr)
+            },
+            "earnings_chart": earnings_chart,
+            "gift_breakdown": gift_breakdown,
+            "bounty_stats": {
+                "total": total_bounties,
+                "completed": completed_bounties,
+                "earnings_idr": float(bounty_earnings)
+            }
+        })

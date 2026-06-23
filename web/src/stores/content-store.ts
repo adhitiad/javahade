@@ -1,12 +1,14 @@
 // ============================================================
 // Content Store — Zustand state for posts, stories, comments
 // ============================================================
-import { create } from 'zustand';
+import { createStore } from 'zustand/vanilla';
+import { createZustandContext } from './factory';
 import type { Post, Story, Comment, PaginatedResponse } from '@/types';
 import type { PostCreateInput } from '@/schemas';
 import { django } from '@/lib/api';
+import { postResponseSchema, commentResponseSchema, storyResponseSchema } from '@/schemas/responses';
 
-interface ContentState {
+export interface ContentState {
   posts: Post[];
   stories: Story[];
   comments: Record<string, Comment[]>;
@@ -25,7 +27,7 @@ interface ContentState {
   clearError: () => void;
 }
 
-export const useContentStore = create<ContentState>()((set) => ({
+export const createContentStore = () => createStore<ContentState>()((set) => ({
   posts: [],
   stories: [],
   comments: {},
@@ -57,7 +59,7 @@ export const useContentStore = create<ContentState>()((set) => ({
   createPost: async (data) => {
     set({ isLoading: true, error: null });
     try {
-      const newPost = await django.post<Post>('/posts/', data);
+      const newPost = await django.post<Post>('/posts/', data, postResponseSchema);
       set((state) => ({
         posts: [newPost, ...state.posts],
         isLoading: false,
@@ -146,7 +148,7 @@ export const useContentStore = create<ContentState>()((set) => ({
       const newComment = await django.post<Comment>(`/posts/${postId}/comments/`, {
         body,
         parent,
-      });
+      }, commentResponseSchema);
 
       set((state) => {
         const postComments = state.comments[postId] || [];
@@ -173,7 +175,7 @@ export const useContentStore = create<ContentState>()((set) => ({
       formData.append('media_file', mediaFile);
       formData.append('caption', caption);
 
-      const newStory = await django.post<Story>('/posts/stories/create/', formData);
+      const newStory = await django.post<Story>('/posts/stories/create/', formData, storyResponseSchema);
 
       set((state) => ({
         stories: [newStory, ...state.stories],
@@ -187,3 +189,5 @@ export const useContentStore = create<ContentState>()((set) => ({
 
   clearError: () => set({ error: null }),
 }));
+
+export const { Provider: ContentStoreProvider, useStoreHook: useContentStore } = createZustandContext<ContentState>();
