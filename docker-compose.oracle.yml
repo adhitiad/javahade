@@ -1,0 +1,179 @@
+version: '3.8'
+
+services:
+  # ==============================================================
+  # CACHE & MESSAGE BROKER (Lokal di Mesin Oracle)
+  # ==============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: oracle_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - oracle_net
+    deploy:
+      resources:
+        limits:
+          memory: 4G # Limit memori agar tidak bocor
+
+  # ==============================================================
+  # PYTHON / DJANGO SERVICES (Lokal di Mesin Oracle)
+  # ==============================================================
+  python-api:
+    build: 
+      context: ./python-service
+      dockerfile: ../docker/python.Dockerfile
+    container_name: oracle_python_api
+    environment:
+      # Koneksi ke Supabase (PostgreSQL External)
+      - DATABASE_URL=${SUPABASE_DB_URL}
+      - DB_HOST=${SUPABASE_DB_HOST}
+      - DB_PORT=5432
+      - DB_NAME=${SUPABASE_DB_NAME}
+      - DB_USER=${SUPABASE_DB_USER}
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      
+      # Koneksi ke Redis Lokal
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      
+      - ALLOWED_HOSTS=*
+      - DEBUG=False # Set False untuk Production
+    depends_on:
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    networks:
+      - oracle_net
+    deploy:
+      resources:
+        limits:
+          memory: 8G # Alokasi memori yang cukup besar untuk Python
+
+  python-saga-worker:
+    build: 
+      context: ./python-service
+      dockerfile: ../docker/python.Dockerfile
+    container_name: oracle_python_worker
+    command: python manage.py run_saga_worker
+    environment:
+      - DATABASE_URL=${SUPABASE_DB_URL}
+      - DB_HOST=${SUPABASE_DB_HOST}
+      - DB_PORT=5432
+      - DB_NAME=${SUPABASE_DB_NAME}
+      - DB_USER=${SUPABASE_DB_USER}
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      - REDIS_URL=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+      - ALLOWED_HOSTS=*
+      - DEBUG=False
+    depends_on:
+      - python-api
+    networks:
+      - oracle_net
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+
+  # ==============================================================
+  # GO MICROSERVICES (Lokal di Mesin Oracle)
+  # ==============================================================
+  booking-service:
+    build:
+      context: ./go-services
+      args:
+        SERVICE_NAME: booking-service
+    container_name: oracle_go_booking
+    environment:
+      # Koneksi ke Supabase (PostgreSQL External)
+      - DATABASE_URL=${SUPABASE_DB_URL}
+      - DB_HOST=${SUPABASE_DB_HOST}
+      - DB_PORT=5432
+      - DB_NAME=${SUPABASE_DB_NAME}
+      - DB_USER=${SUPABASE_DB_USER}
+      - DB_PASSWORD=${SUPABASE_DB_PASSWORD}
+      
+      # Koneksi ke Redis Lokal
+      - REDIS_URL=redis://redis:6379/0
+      - BOOKING_SERVICE_PORT=3333
+      - PORT=3333
+      - CORS_ALLOWED_ORIGINS=${FRONTEND_URL:-https://domain-anda.vercel.app}
+    ports:
+      - "3333:3333"
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - oracle_net
+    deploy:
+      resources:
+        limits:
+          memory: 2G # Go sangat ringan
+
+  stream-service:
+    build:
+      context: ./go-services
+      args:
+        SERVICE_NAME: stream-service
+    container_name: oracle_go_stream
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - STREAM_SERVICE_PORT=3334
+      - PORT=3334
+      - MODERATION_API_URL=http://python-api:8000/api/v1/moderation/check/
+      - CORS_ALLOWED_ORIGINS=${FRONTEND_URL:-https://domain-anda.vercel.app}
+      # VideoSDK API Keys
+      - VIDEOSDK_API_KEY=${VIDEOSDK_API_KEY}
+      - VIDEOSDK_SECRET_KEY=${VIDEOSDK_SECRET_KEY}
+    ports:
+      - "3334:3334"
+    depends_on:
+      - redis
+    networks:
+      - oracle_net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  chat-service:
+    build:
+      context: ./go-services
+      args:
+        SERVICE_NAME: chat-service
+    container_name: oracle_go_chat
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      # Koneksi ke MongoDB Atlas (External)
+      - MONGO_URI=${MONGODB_ATLAS_URI}
+      - CHAT_SERVICE_PORT=3335
+      - PORT=3335
+      - CORS_ALLOWED_ORIGINS=${FRONTEND_URL:-https://domain-anda.vercel.app}
+    ports:
+      - "3335:3335"
+    depends_on:
+      - redis
+    networks:
+      - oracle_net
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+networks:
+  oracle_net:
+    driver: bridge
+
+volumes:
+  redisdata:

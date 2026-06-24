@@ -263,6 +263,7 @@ CORS_ALLOWED_ORIGINS = config(
 )
 if isinstance(CORS_ALLOWED_ORIGINS, list) and "*" in CORS_ALLOWED_ORIGINS:
     CORS_ALLOW_ALL_ORIGINS = True
+    CORS_ALLOWED_ORIGINS = [] # Harus dikosongkan agar django-cors-headers tidak error E013
 CORS_ALLOW_CREDENTIALS = True
 
 # =============================================================================

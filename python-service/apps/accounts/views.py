@@ -78,7 +78,7 @@ class CustomCookieLoginView(TokenObtainPairView):
                 value=access_token,
                 httponly=True,
                 secure=not settings.DEBUG,
-                samesite='Strict',
+                samesite='Lax',
                 max_age=3600
             )
             response.set_cookie(
@@ -86,7 +86,7 @@ class CustomCookieLoginView(TokenObtainPairView):
                 value=refresh_token,
                 httponly=True,
                 secure=not settings.DEBUG,
-                samesite='Strict',
+                samesite='Lax',
                 max_age=7*24*3600
             )
         return response
@@ -129,7 +129,7 @@ class CustomCookieTokenRefreshView(TokenRefreshView):
                 value=access_token,
                 httponly=True,
                 secure=not settings.DEBUG,
-                samesite='Strict',
+                samesite='Lax',
                 max_age=3600
             )
             if new_refresh_token:
@@ -138,7 +138,7 @@ class CustomCookieTokenRefreshView(TokenRefreshView):
                     value=new_refresh_token,
                     httponly=True,
                     secure=not settings.DEBUG,
-                    samesite='Strict',
+                    samesite='Lax',
                     max_age=7*24*3600
                 )
         return response
@@ -231,7 +231,7 @@ class SocialLoginView(APIView):
             value=access_token,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='Lax',
             max_age=3600
         )
         response.set_cookie(
@@ -239,7 +239,7 @@ class SocialLoginView(APIView):
             value=refresh_token,
             httponly=True,
             secure=not settings.DEBUG,
-            samesite='Strict',
+            samesite='Lax',
             max_age=7*24*3600
         )
         return response

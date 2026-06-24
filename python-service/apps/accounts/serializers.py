@@ -103,6 +103,7 @@ class UserSerializer(serializers.ModelSerializer):
     """Full user profile serializer."""
 
     has_creator_profile = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(source="date_joined", read_only=True)
 
     class Meta:
         model = User
@@ -117,10 +118,10 @@ class UserSerializer(serializers.ModelSerializer):
             "is_verified",
             "date_of_birth",
             "has_creator_profile",
-            "date_joined",
+            "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "role", "is_verified", "date_joined"]
+        read_only_fields = ["id", "role", "is_verified", "created_at"]
 
     def get_has_creator_profile(self, obj):
         return hasattr(obj, "creator_profile")

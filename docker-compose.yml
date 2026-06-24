@@ -92,27 +92,27 @@ services:
     networks:
       - kreativa_net
 
-  python-saga-worker:
-    build: 
-      context: ./python-service
-    container_name: kreativa_saga_worker
-    command: python manage.py run_saga_worker
-    environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=${DB_NAME:-kreativa_db}
-      - DB_USER=${DB_USER:-kreativa}
-      - DB_PASSWORD=${DB_PASSWORD:-kreativa_pass}
-      - DATABASE_URL=postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}
-      - REDIS_URL=redis://redis:6379/0
-      - CELERY_BROKER_URL=redis://redis:6379/1
-      - CELERY_RESULT_BACKEND=redis://redis:6379/2
-      - ALLOWED_HOSTS=*
-      - DEBUG=True
-    depends_on:
-      - python-api
-    networks:
-      - kreativa_net
+#  python-saga-worker:
+#    build: 
+#      context: ./python-service
+#    container_name: kreativa_saga_worker
+#    command: python manage.py run_saga_worker
+#    environment:
+#      - DB_HOST=postgres
+#      - DB_PORT=5432
+#      - DB_NAME=${DB_NAME:-kreativa_db}
+#      - DB_USER=${DB_USER:-kreativa}
+#      - DB_PASSWORD=${DB_PASSWORD:-kreativa_pass}
+#      - DATABASE_URL=postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}
+#      - REDIS_URL=redis://redis:6379/0
+#      - CELERY_BROKER_URL=redis://redis:6379/1
+#      - CELERY_RESULT_BACKEND=redis://redis:6379/2
+#      - ALLOWED_HOSTS=*
+#      - DEBUG=True
+#    depends_on:
+#      - python-api
+#    networks:
+#      - kreativa_net
 
   # ==============================================================
   # GO MICROSERVICES
@@ -183,6 +183,29 @@ services:
     networks:
       - kreativa_net
 
+  payment-service:
+    build:
+      context: ./go-services/payment-service
+    container_name: kreativa_payment
+    environment:
+      - DATABASE_URL=postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}?sslmode=disable
+      - REDIS_URL=redis://redis:6379/0
+      - PORT=3336
+      - VEROTEL_SHOP_ID=dummy
+      - VEROTEL_SIGNATURE=dummy
+      - SEGPAY_PACKAGE_ID=dummy
+      - PAXUM_EMAIL=dummy
+      - PAXUM_SECRET=dummy
+    ports:
+      - "3336:3000"
+    depends_on:
+      pgbouncer:
+        condition: service_started
+      redis:
+        condition: service_healthy
+    networks:
+      - kreativa_net
+
   # ==============================================================
   # NEXT.JS FRONTEND SERVICE
   # ==============================================================
@@ -199,6 +222,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-dummy-google-client-secret}
       - FACEBOOK_CLIENT_ID=${FACEBOOK_CLIENT_ID:-dummy-facebook-client-id}
       - FACEBOOK_CLIENT_SECRET=${FACEBOOK_CLIENT_SECRET:-dummy-facebook-client-secret}
+      - PAYMENT_SERVICE_URL=${PAYMENT_SERVICE_URL:-http://payment-service:3000}
       - NODE_ENV=production
     ports:
       - "3000:3000"
