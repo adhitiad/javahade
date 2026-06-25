@@ -74,11 +74,8 @@ export function Navbar() {
   const handleSearch = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearchQuery(e.target.value);
-      if (e.target.value.trim()) {
-        router.push('/search');
-      }
     },
-    [setSearchQuery, router]
+    [setSearchQuery]
   );
 
   const handleKeyDown = useCallback(

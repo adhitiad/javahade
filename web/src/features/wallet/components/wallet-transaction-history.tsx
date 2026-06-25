@@ -61,16 +61,16 @@ function getTransactionTypeLabel(type: TransactionType): string {
 
 export function WalletTransactionHistory({ transactions }: { transactions: WalletTransaction[] }) {
   return (
-    <Card className="bg-gray-900/40 border-white/5 glass">
+    <Card className="bg-card/60 backdrop-blur-xl border-border/50 shadow-lg">
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle className="text-lg">Riwayat Transaksi (Buku Besar)</CardTitle>
+            <CardTitle className="text-xl">Riwayat Transaksi (Buku Besar)</CardTitle>
             <CardDescription>Transaksi riil di dompet Anda</CardDescription>
           </div>
-          <Button variant="ghost" size="sm" className="text-primary hover:bg-white/5">
+          <Button variant="ghost" size="sm" className="text-primary hover:bg-accent hover:text-accent-foreground font-medium rounded-xl">
             Lihat Semua
-            <ChevronRight className="size-4" />
+            <ChevronRight className="size-4 ml-1" />
           </Button>
         </div>
       </CardHeader>
@@ -81,21 +81,21 @@ export function WalletTransactionHistory({ transactions }: { transactions: Walle
               transactions.map((tx) => (
                 <div
                   key={tx.id}
-                  className="flex items-center gap-3 p-3 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group"
+                  className="flex items-center gap-3 p-3 rounded-xl hover:bg-accent/50 transition-all cursor-pointer group hover:shadow-sm border border-transparent hover:border-border/50"
                 >
-                  <div className="flex size-10 items-center justify-center rounded-full bg-white/5 shrink-0">
+                  <div className="flex size-11 items-center justify-center rounded-full bg-muted shrink-0 group-hover:bg-background group-hover:scale-110 transition-all shadow-inner border border-border/50">
                     {getTransactionIcon(tx.transaction_type)}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <p className="text-sm font-medium truncate">{tx.notes || getTransactionTypeLabel(tx.transaction_type)}</p>
+                      <p className="text-sm font-semibold truncate text-foreground group-hover:text-primary transition-colors">{tx.notes || getTransactionTypeLabel(tx.transaction_type)}</p>
                       {tx.status === 'pending' && (
-                        <Badge variant="secondary" className="text-xs text-yellow-600 bg-yellow-100 shrink-0">
+                        <Badge variant="secondary" className="text-xs text-amber-600 bg-amber-100 dark:text-amber-400 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800 shrink-0">
                           Pending
                         </Badge>
                       )}
                       {tx.status === 'failed' && (
-                        <Badge variant="destructive" className="text-xs shrink-0">Gagal</Badge>
+                        <Badge variant="destructive" className="text-xs shrink-0 shadow-sm">Gagal</Badge>
                       )}
                     </div>
                     <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">

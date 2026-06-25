@@ -249,6 +249,8 @@ function SecuritySettings() {
         <Separator className="bg-primary/10" />
         <CardContent className="space-y-6 pt-6">
           <div className="space-y-4 max-w-md">
+            {/* Hidden field to capture password manager's username autofill and prevent it from filling the Navbar Search box */}
+            <input type="text" name="username" autoComplete="username" className="hidden" aria-hidden="true" />
             <div className="space-y-2">
               <Label htmlFor="currentPassword">Password Saat Ini</Label>
               <Input id="currentPassword" type="password" className="bg-background/50" />

@@ -9,9 +9,15 @@ RUN apk add --no-cache git ca-certificates tzdata
 # Optimization: Copy file go.mod dan go.sum (atau go.work) terlebih dahulu.
 # Ini memanfaatkan layer caching Docker agar tidak perlu download ulang package
 # jika tidak ada perubahan pada dependencies.
-COPY go.* ./
-# Jika menggunakan go.work dan sub-module, jalankan download (opsional tapi disarankan)
-# RUN go mod download
+COPY go.work go.work.sum ./
+COPY booking-service/go.mod booking-service/go.sum ./booking-service/
+COPY chat-service/go.mod chat-service/go.sum ./chat-service/
+COPY payment-service/go.mod payment-service/go.sum ./payment-service/
+COPY shared/go.mod shared/go.sum ./shared/
+COPY stream-service/go.mod stream-service/go.sum ./stream-service/
+
+# Download dependencies (akan ter-cache jika go.mod tidak berubah)
+RUN go mod download
 
 # Copy seluruh source code
 COPY . .

@@ -15,7 +15,6 @@ export interface WalletState {
   totalBalance: Record<Currency, number>;
   isLoading: boolean;
   error: string | null;
-  paypalClientId: string | null;
 
   fetchTransactions: () => Promise<void>;
   fetchExchangeRates: () => Promise<void>;
@@ -25,24 +24,8 @@ export interface WalletState {
     method: string,
     txHash?: string,
   ) => Promise<void>;
-  createPayPalOrder: (amount: number) => Promise<{ id: string }>;
-  capturePayPalOrder: (
-    orderID: string,
-    amount: number,
-    currency: Currency,
-  ) => Promise<void>;
-  verifyCrypto: (
-    txid: string,
-    network: string,
-  ) => Promise<{
-    valid: boolean;
-    amount?: string;
-    currency?: string;
-    error?: string;
-  }>;
   convertAll: () => Promise<void>;
   requestPayout: (amount: number, currency: Currency) => Promise<void>;
-  fetchPayPalClientId: () => Promise<string>;
   sendGift: (receiver: string, gift: string, context: string) => Promise<void>;
   setSelectedCurrency: (currency: Currency) => void;
   clearError: () => void;
@@ -55,7 +38,6 @@ export const createWalletStore = () => createStore<WalletState>()((set, get) => 
   totalBalance: { USD: 0, SGD: 0, IDR: 0, MYR: 0, CNY: 0 },
   isLoading: false,
   error: null,
-  paypalClientId: null,
 
   fetchTransactions: async () => {
     set({ isLoading: true, error: null });
@@ -114,71 +96,24 @@ export const createWalletStore = () => createStore<WalletState>()((set, get) => 
   topupManual: async (amount, currency, method, txHash) => {
     set({ isLoading: true, error: null });
     try {
-      const res = await django.post<{ status: string; message: string }>(
+      const res = await django.post<{ status: string; message: string; checkout_url?: string }>(
         "/payments/intent/",
         {
           amount: String(amount),
           currency,
           payment_type: "deposit",
-          provider: "manual",
-          metadata: { method, tx_hash: txHash },
+          provider: method,
         },
       );
       if (res.status === "error") throw new Error(res.message);
+      
+      // Navigate to checkout URL if provider returns one (e.g., Segpay, Verotel)
+      if (res.checkout_url && typeof window !== 'undefined') {
+        window.location.href = res.checkout_url;
+      }
+      
       await get().fetchTransactions();
       set({ isLoading: false });
-    } catch (err) {
-      set({ error: (err as Error).message, isLoading: false });
-      throw err;
-    }
-  },
-
-  createPayPalOrder: async (amount) => {
-    set({ isLoading: true, error: null });
-    try {
-      const res = await django.post<{ id: string }>(
-        "/payments/api/paypal/create-order/",
-        { amount },
-      );
-      set({ isLoading: false });
-      return res;
-    } catch (err) {
-      set({ error: (err as Error).message, isLoading: false });
-      throw err;
-    }
-  },
-
-  capturePayPalOrder: async (orderID, amount, currency) => {
-    set({ isLoading: true, error: null });
-    try {
-      const res = await django.post<{ status: string; error?: string }>(
-        "/payments/api/paypal/capture-order/",
-        {
-          orderID,
-          amount: String(amount),
-          currency,
-        },
-      );
-      if (res.status !== "COMPLETED")
-        throw new Error(res.error || "Failed to capture PayPal order");
-      await get().fetchTransactions();
-      set({ isLoading: false });
-    } catch (err) {
-      set({ error: (err as Error).message, isLoading: false });
-      throw err;
-    }
-  },
-
-  verifyCrypto: async (txid, network) => {
-    set({ isLoading: true, error: null });
-    try {
-      const res = await django.post<any>("/payments/verify-crypto/", {
-        txid,
-        network,
-      });
-      await get().fetchTransactions();
-      set({ isLoading: false });
-      return res;
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });
       throw err;
@@ -216,17 +151,6 @@ export const createWalletStore = () => createStore<WalletState>()((set, get) => 
       set({ isLoading: false });
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });
-      throw err;
-    }
-  },
-
-  fetchPayPalClientId: async () => {
-    try {
-      const res = await django.get<{ paypal_client_id: string }>("/payments/");
-      set({ paypalClientId: res.paypal_client_id });
-      return res.paypal_client_id;
-    } catch (err) {
-      set({ error: (err as Error).message });
       throw err;
     }
   },

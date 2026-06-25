@@ -55,62 +55,65 @@ export function WalletWithdrawDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2 border-white/5 bg-white/5 hover:bg-white/10 text-white">
-          <ArrowDownCircle className="size-6 text-red-500" />
-          <span className="text-sm font-medium">Tarik Dana</span>
+        <Button variant="outline" className="w-full h-auto py-5 flex-col gap-3 border-border/50 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:shadow-md transition-all rounded-xl group">
+          <div className="p-3 bg-red-500/10 rounded-full group-hover:scale-110 group-hover:bg-red-500/20 transition-all duration-300">
+            <ArrowDownCircle className="size-6 text-red-500" />
+          </div>
+          <span className="text-sm font-semibold">Tarik Dana</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass border border-white/10 bg-zinc-950/90 text-white sm:max-w-md">
+      <DialogContent className="border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl sm:max-w-md rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Tarik Dana</DialogTitle>
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-red-500 to-rose-500 bg-clip-text text-transparent">Tarik Dana</DialogTitle>
           <DialogDescription>Tarik saldo operasional utama Anda</DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div className="space-y-2">
-            <Label>Mata Uang Penarikan</Label>
+            <Label className="text-sm font-semibold">Mata Uang Penarikan</Label>
             <Select value={currency} onValueChange={(v) => setCurrency(v as Currency)}>
-              <SelectTrigger className="w-full bg-black/40 border-white/10 text-white">
+              <SelectTrigger className="w-full bg-background/50 border-border/50 hover:bg-accent hover:border-accent transition-colors">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="bg-zinc-950 text-white border-white/10">
-                <SelectItem value="IDR">IDR - Rupiah Indonesia</SelectItem>
-                <SelectItem value="USD">USD - Dollar Amerika</SelectItem>
-                <SelectItem value="SGD">SGD - Dollar Singapura</SelectItem>
+              <SelectContent className="border-border/50 rounded-xl">
+                <SelectItem value="IDR" className="cursor-pointer">IDR - Rupiah Indonesia</SelectItem>
+                <SelectItem value="USD" className="cursor-pointer">USD - Dollar Amerika</SelectItem>
+                <SelectItem value="SGD" className="cursor-pointer">SGD - Dollar Singapura</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Jumlah</Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+            <Label className="text-sm font-semibold">Jumlah</Label>
+            <div className="relative group">
+              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground group-focus-within:text-red-500 transition-colors">
                 {formatCurrencyLabel(currency)}
               </span>
               <Input
                 type="number"
                 placeholder="Masukkan jumlah"
-                className="pl-12 bg-black/40 border-white/10 text-white font-mono text-lg"
+                className="pl-12 bg-background/50 border-border/50 font-mono text-lg h-12 focus-visible:ring-red-500/50 focus-visible:border-red-500 rounded-xl transition-all"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              Saldo tersedia: {formatCurrency(totalBalance[currency] || 0, currency)}
+            <p className="text-xs text-muted-foreground font-medium">
+              Saldo tersedia: <span className="text-foreground">{formatCurrency(totalBalance[currency] || 0, currency)}</span>
             </p>
           </div>
 
-          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-xl text-xs text-yellow-300">
-            ⚠️ Penarikan saldo memerlukan konfirmasi admin sebelum ditransfer. Status penarikan akan bertambah ke riwayat transaksi.
+          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl text-sm text-amber-700 dark:text-amber-400 shadow-sm flex items-start gap-3">
+            <span className="text-lg">⚠️</span>
+            <p>Penarikan saldo memerlukan konfirmasi admin sebelum ditransfer. Status penarikan akan bertambah ke riwayat transaksi.</p>
           </div>
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)} className="border-white/10 text-white hover:bg-white/5">Batal</Button>
+        <DialogFooter className="gap-2 sm:gap-0 mt-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl border-border/50 hover:bg-accent transition-colors">Batal</Button>
           <Button
-            className="bg-red-600 hover:bg-red-700 border-none text-white gap-2"
+            className="bg-gradient-to-r from-red-500 to-rose-500 hover:from-red-600 hover:to-rose-600 shadow-md hover:shadow-lg transition-all border-none text-white gap-2 font-semibold rounded-xl"
             disabled={!amount || Number(amount) <= 0 || isProcessing || Number(amount) > (totalBalance[currency] || 0)}
             onClick={handleWithdraw}
           >
             {isProcessing && <Loader2 className="h-4 w-4 animate-spin" />}
-            Tarik Dana
+            Konfirmasi Penarikan
           </Button>
         </DialogFooter>
       </DialogContent>

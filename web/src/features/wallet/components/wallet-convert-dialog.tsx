@@ -40,33 +40,35 @@ export function WalletConvertDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" className="w-full h-auto py-4 flex-col gap-2 border-white/5 bg-white/5 hover:bg-white/10 text-white">
-          <ArrowRightLeft className="size-6 text-blue-500" />
-          <span className="text-sm font-medium">Konversi</span>
+        <Button variant="outline" className="w-full h-auto py-5 flex-col gap-3 border-border/50 bg-background/50 hover:bg-accent hover:text-accent-foreground hover:shadow-md transition-all rounded-xl group">
+          <div className="p-3 bg-blue-500/10 rounded-full group-hover:scale-110 group-hover:bg-blue-500/20 transition-all duration-300">
+            <ArrowRightLeft className="size-6 text-blue-500" />
+          </div>
+          <span className="text-sm font-semibold">Konversi</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="glass border border-white/10 bg-zinc-950/90 text-white max-w-sm">
+      <DialogContent className="border-border/50 bg-card/95 backdrop-blur-xl shadow-2xl max-w-sm rounded-2xl">
         <DialogHeader>
-          <DialogTitle>Auto-Convert Saldo Asing</DialogTitle>
+          <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-blue-500 to-indigo-500 bg-clip-text text-transparent">Auto-Convert Saldo Asing</DialogTitle>
           <DialogDescription>Mengonversi seluruh saldo mata uang asing Anda menjadi Rupiah (IDR) secara instan.</DialogDescription>
         </DialogHeader>
-        <div className="space-y-4 py-2 text-sm text-gray-300">
-          <div className="p-4 bg-white/5 border border-white/5 rounded-2xl space-y-2">
-            <p className="font-bold text-white mb-1">Spread & Layanan Platform:</p>
-            <p>· Potongan selisih kurs sebesar 1.5% untuk biaya operasional platform.</p>
-            <p>· Saldo asing Anda yang bernilai positif akan langsung di-convert.</p>
+        <div className="space-y-4 py-3 text-sm text-muted-foreground">
+          <div className="p-4 bg-background/80 shadow-inner border border-border/50 rounded-xl space-y-2">
+            <p className="font-bold text-foreground mb-1">Spread & Layanan Platform:</p>
+            <p className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">•</span> Potongan selisih kurs sebesar 1.5% untuk biaya operasional platform.</p>
+            <p className="flex items-start gap-2"><span className="text-blue-500 mt-0.5">•</span> Saldo asing Anda yang bernilai positif akan langsung di-convert.</p>
           </div>
-          <div className="p-3 border border-emerald-500/20 bg-emerald-500/5 rounded-xl flex flex-col gap-1">
-            <span className="text-xs text-muted-foreground">Perkiraan saldo asing Anda saat ini:</span>
-            <span className="text-white font-mono font-bold text-xs">
+          <div className="p-4 border border-emerald-500/20 bg-emerald-500/10 dark:bg-emerald-500/5 rounded-xl flex flex-col gap-1.5 shadow-sm">
+            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider">Perkiraan saldo asing Anda saat ini:</span>
+            <span className="text-foreground font-mono font-bold text-sm">
               USD: {formatCurrency(totalBalance.USD, 'USD')} | SGD: {formatCurrency(totalBalance.SGD, 'SGD')}
             </span>
           </div>
         </div>
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)} className="border-white/10 text-white hover:bg-white/5">Batal</Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-3 mt-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="rounded-xl border-border/50 hover:bg-accent transition-colors">Batal</Button>
           <Button
-            className="bg-emerald-600 hover:bg-emerald-700 border-none text-white gap-2 flex-1"
+            className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 shadow-md hover:shadow-lg transition-all border-none text-white gap-2 flex-1 rounded-xl font-semibold"
             disabled={isConverting || !hasForeignBalance}
             onClick={handleConvertAll}
           >
