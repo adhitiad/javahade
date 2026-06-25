@@ -1,13 +1,10 @@
 package adapters
 
 import (
-	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
-	"io"
 	"net/http"
-	"net/url"
 	"sort"
 	"strings"
 
