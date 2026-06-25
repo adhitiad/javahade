@@ -3,7 +3,7 @@
 // ============================================================
 import { createStore } from 'zustand/vanilla';
 import { createZustandContext } from './factory';
-import type { Post, Story, Comment, PaginatedResponse } from '@/types';
+import type { Post, Story, Comment, PaginatedResponse, CreatorProfile } from '@/types';
 import type { PostCreateInput } from '@/schemas';
 import { django } from '@/lib/api';
 import { postResponseSchema, commentResponseSchema, storyResponseSchema } from '@/schemas/responses';
@@ -11,6 +11,7 @@ import { postResponseSchema, commentResponseSchema, storyResponseSchema } from '
 export interface ContentState {
   posts: Post[];
   stories: Story[];
+  suggestedCreators: CreatorProfile[];
   comments: Record<string, Comment[]>;
   isLoading: boolean;
   error: string | null;
@@ -18,6 +19,7 @@ export interface ContentState {
   // Actions
   fetchFeed: () => Promise<void>;
   fetchStories: () => Promise<void>;
+  fetchSuggestedCreators: () => Promise<void>;
   createPost: (data: PostCreateInput) => Promise<void>;
   toggleLike: (postId: string) => Promise<void>;
   toggleUnlike: (postId: string) => Promise<void>;
@@ -30,6 +32,7 @@ export interface ContentState {
 export const createContentStore = () => createStore<ContentState>()((set) => ({
   posts: [],
   stories: [],
+  suggestedCreators: [],
   comments: {},
   isLoading: false,
   error: null,
@@ -53,6 +56,16 @@ export const createContentStore = () => createStore<ContentState>()((set) => ({
       set({ stories, isLoading: false });
     } catch (err) {
       set({ error: (err as Error).message, isLoading: false });
+    }
+  },
+
+  fetchSuggestedCreators: async () => {
+    try {
+      const res = await django.get<CreatorProfile[] | PaginatedResponse<CreatorProfile>>('/creators/?ordering=-subscriber_count&page_size=5');
+      const creators = Array.isArray(res) ? res : res.results;
+      set({ suggestedCreators: creators });
+    } catch (err) {
+      console.error("Failed to fetch suggested creators:", err);
     }
   },
 

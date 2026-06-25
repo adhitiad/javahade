@@ -101,7 +101,15 @@ export interface User {
 
 export interface CreatorProfile {
   id: string;
-  user: string;
+  user: {
+    id: string;
+    username: string;
+    avatar?: string;
+    bio?: string;
+    role: string;
+    is_verified: boolean;
+  } | string;
+  username?: string;
   display_name: string;
   bio?: string;
   category: string;

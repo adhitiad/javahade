@@ -1,10 +1,16 @@
-'use client';
+"use client";
 
-import { useEffect, useSyncExternalStore } from 'react';
-import { useUIStore } from '@/stores/ui-store';
-import { Navbar, Sidebar, NSFWGate, BottomNav, MainContent } from '@/components/layout';
-import { useAuthStore } from '@/stores/auth-store';
-
+import { useEffect, useSyncExternalStore } from "react";
+import { useUIStore } from "@/stores/ui-store";
+import {
+  Navbar,
+  Sidebar,
+  NSFWGate,
+  BottomNav,
+  MainContent,
+  GuestNavbar,
+} from "@/components/layout";
+import { useAuthStore } from "@/stores/auth-store";
 
 export default function MainLayout({
   children,
@@ -12,25 +18,25 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const { nsfwAccepted, setIsMobile } = useUIStore();
-  const { fetchUser } = useAuthStore();
+  const { fetchUser, isAuthenticated } = useAuthStore();
 
   // Hydration-safe mounted check
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
-    () => false
+    () => false,
   );
 
   // Responsive detection
   useEffect(() => {
     const check = () => setIsMobile(window.innerWidth < 1024);
     check();
-    window.addEventListener('resize', check);
-    
+    window.addEventListener("resize", check);
+
     // Fetch current user from Django session to populate Zustand store
     fetchUser();
-    
-    return () => window.removeEventListener('resize', check);
+
+    return () => window.removeEventListener("resize", check);
   }, [setIsMobile, fetchUser]);
 
   if (!mounted) {
@@ -48,12 +54,11 @@ export default function MainLayout({
     <div className="min-h-screen flex flex-col bg-background">
       {/* NSFW Age Gate */}
       {!nsfwAccepted && <NSFWGate />}
+      {/* Jika sudah login → Navbar lengkap, belum login → GuestNavbar */}
+      {mounted && (isAuthenticated ? <Navbar /> : <GuestNavbar />)}
 
-      {/* Top Navbar */}
-      <Navbar />
-
-      {/* Mobile Sidebar */}
-      <Sidebar />
+      {/* Sidebar hanya muncul jika sudah login */}
+      {mounted && isAuthenticated && <Sidebar />}
 
       {/* Main Content */}
       <MainContent>{children}</MainContent>
