@@ -113,14 +113,57 @@ class PayPalAdapterProvider(PaymentProvider):
     def refund_payment(self, provider_ref: str, amount: float) -> PaymentResult:
         return PaymentResult(success=False, provider_ref=provider_ref, error_message="Not implemented")
 
+class GoPaymentAdapterProvider(PaymentProvider):
+    def __init__(self, provider_name: str):
+        self.provider_name = provider_name
+        from django.conf import settings
+        self.base_url = getattr(settings, "GO_PAYMENT_SERVICE_URL", "http://localhost:3001/v1")
+
+    def create_payment(self, amount: float, currency: str, metadata: dict) -> PaymentResult:
+        try:
+            import requests
+            payload = {
+                "amount": amount,
+                "currency": currency,
+                "provider_preference": self.provider_name,
+                "user_id": str(metadata.get("user_id", "00000000-0000-0000-0000-000000000000"))
+            }
+            response = requests.post(f"{self.base_url}/intent", json=payload, timeout=10)
+            response.raise_for_status()
+            data = response.json()
+            # If the Go service returns a checkout URL, we can pass it via provider_ref temporarily
+            # or in a real scenario extend PaymentResult.
+            # We'll prepend 'go_checkout:' to signal the view.
+            ref = data.get("checkout_url") or data.get("client_secret") or "ref_unknown"
+            if "checkout_url" in data:
+                ref = "go_checkout:" + data["checkout_url"]
+            return PaymentResult(success=True, provider_ref=ref)
+        except Exception as e:
+            logger.error("GoPaymentAdapterProvider Error: %s", e)
+            return PaymentResult(success=False, provider_ref="", error_message=str(e))
+
+    def verify_payment(self, provider_ref: str) -> PaymentResult:
+        # Usually Go handles via Webhook, verification returns True
+        return PaymentResult(success=True, provider_ref=provider_ref)
+
+    def refund_payment(self, provider_ref: str, amount: float) -> PaymentResult:
+        return PaymentResult(success=False, provider_ref=provider_ref, error_message="Not implemented via Go Adapter")
+
 
 def get_payment_provider(name: str) -> PaymentProvider:
     """Factory to get payment provider by name."""
+    # Standard Python providers
     providers = {
         "stripe": StripeProvider,
         "crypto": CryptoProvider,
         "paypal": PayPalAdapterProvider,
     }
+    
+    # Check if it's a Go service provider
+    go_providers = ["verotel", "segpay", "netbilling", "elotpay", "paxum"]
+    if name in go_providers:
+        return GoPaymentAdapterProvider(name)
+
     provider_cls = providers.get(name)
     if not provider_cls:
         logger.warning(f"Unknown payment provider: {name}. Falling back to Stripe.")

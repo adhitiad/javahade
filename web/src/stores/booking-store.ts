@@ -1,3 +1,4 @@
+"use client";
 // ============================================================
 // Booking Store — Zustand state management for bookings
 // Uses Go Booking Service at http://localhost:3333/api/v1/bookings

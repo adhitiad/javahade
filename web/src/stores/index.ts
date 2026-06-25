@@ -1,3 +1,4 @@
+"use client";
 // Barrel export for all Zustand stores
 export { useAuthStore } from './auth-store';
 export { useWalletStore } from './wallet-store';

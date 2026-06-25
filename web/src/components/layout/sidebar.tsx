@@ -18,6 +18,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { useRouter, usePathname } from 'next/navigation';
+import Link from 'next/link';
 import { cn } from '@/lib/utils';
 
 import { Button } from '@/components/ui/button';
@@ -249,6 +250,13 @@ export function Sidebar() {
             <LogOut className="size-4" />
             <span>Logout</span>
           </Button>
+
+          <div className="mt-2 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[10px] text-muted-foreground/70">
+            <Link href="/terms" onClick={() => setSidebarOpen(false)} className="hover:text-foreground">Terms</Link>
+            <Link href="/privacy" onClick={() => setSidebarOpen(false)} className="hover:text-foreground">Privacy</Link>
+            <Link href="/2257" onClick={() => setSidebarOpen(false)} className="hover:text-foreground">18 U.S.C. 2257</Link>
+            <Link href="/dmca" onClick={() => setSidebarOpen(false)} className="hover:text-foreground">DMCA</Link>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

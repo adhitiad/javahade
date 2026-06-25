@@ -1,3 +1,4 @@
+"use client";
 // ============================================================
 // Auth Store — Zustand state management for authentication
 // Django login returns tokens in HttpOnly cookies (not JSON body)

@@ -1,3 +1,4 @@
+"use client";
 // ============================================================
 // Notification Store — Zustand state for notifications
 // Uses Django REST API at http://localhost:8000/api/v1/notifications

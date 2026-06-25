@@ -13,6 +13,7 @@ E:\java\
 │   ├── stream-service # Streaming (OME/WebRTC via WebSocket)
 │   ├── chat-service   # Real-time Chat (WebSocket Hub)
 │   ├── booking-service# Booking & Presence WebSocket
+│   ├── payment-service# Integrasi Gateway Pembayaran (Verotel, Segpay, Paxum, dll)
 │   └── shared\        # Shared package (Database, Middleware, Config)
 ├── web\               # Next.js 16 App Router Frontend (Bun, TypeScript, Zustand, Tailwind)
 └── nginx\             # Reverse Proxy & Static Files
@@ -25,15 +26,17 @@ E:\java\
 | Frontend  | **Next.js 16 (App Router)**, **TypeScript (Strict Mode)**, **Zustand**, **Tailwind CSS**, **shadcn/ui**. |
 | API       | **Python 3.10+, Django, Django REST Framework, PostgreSQL, Redis, Celery**.                        |
 | Real-time | **Go, gorilla/websocket**. (Membangun WebSocket hub dengan Redis Pub/Sub antar service).           |
+| Payments  | **Go Payment Microservice** (Verotel, Segpay, NETbilling, ELotPay, Paxum).                         |
 | AI System | **Groq Vision API** (Verifikasi KYC KTP & Selfie otomatis) dan **OpenAI** (Moderasi Konten).       |
-| Proxy     | **Nginx**                                                                                          |
+| Deploy    | **Docker & Docker Compose** (Layer Caching Optimization), **Nginx** (Reverse Proxy).               |
 
 ## Ekosistem & Fitur Utama
 
 - **Sistem Peran Dinamis**: Navigasi Beranda dan Dompet disesuaikan otomatis untuk peran Klien (_Fans_), _Host_, dan Admin.
 - **Penyewaan Ruangan Privat (Booking)**: Klien dapat membooking Host untuk sesi privat, dengan fitur deteksi ketersediaan slot (Idempotency).
 - **Live Streaming & Eksklusivitas**: Host dapat mengadakan siaran langsung WebRTC (didukung OME) secara publik maupun terbatas (_Family Only_).
-- **Ekonomi & Dompet Digital (Wallet)**: Sistem keuangan multi-mata uang untuk konversi (_Exchange Rates_), Pembelian Hadiah Virtual (_Virtual Gifts_), Top-Up, dan Penarikan (_Withdrawal_) lengkap dengan _Fee/Tax System_ terintegrasi.
+- **Ekonomi & Dompet Digital (Wallet)**: Sistem keuangan multi-mata uang untuk konversi (_Exchange Rates_), Pembelian Hadiah Virtual (_Virtual Gifts_), Top-Up, dan Penarikan (_Withdrawal_).
+- **Integrasi Adult Billing & Gateway Global**: Didukung langsung oleh payment gateway tier-1 (Verotel, Segpay, NETbilling, ELotPay) untuk *deposit*, dan **Paxum** khusus untuk rute *payout/withdraw* kreator secara otomatis.
 - **AI-Powered KYC & Moderation**: Memanfaatkan Groq Vision AI untuk mengecek kecocokan foto Selfie dan KTP secara instan, serta integrasi OpenAI untuk moderasi konten Feed otomatis.
 - **Pencarian Global & Feed Kreator**: Pencarian Host dan unggahan konten (Post Feed, Stories).
 - **Real-time Chat**: Obrolan instan privat antar-pengguna dengan skalabilitas Go WebSocket & Redis Pub/Sub.

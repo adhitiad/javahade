@@ -1,3 +1,4 @@
+"use client";
 // ============================================================
 // Family Store — Zustand state for family groups and agency
 // Uses Django REST API at http://localhost:8000/api/v1/families

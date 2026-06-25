@@ -1,3 +1,4 @@
+"use client";
 // ============================================================
 // Wallet Store — Zustand state for wallet/payments
 // Uses Django REST API at http://localhost:8000/api/v1/payments
@@ -42,29 +43,32 @@ export const createWalletStore = () => createStore<WalletState>()((set, get) => 
   fetchTransactions: async () => {
     set({ isLoading: true, error: null });
     try {
-      const data = await django.get(
-        "/payments/earnings/",
-        earningsResponseSchema
-      );
+      // Refresh user to get latest balances
+      const currentUser = await django.get<any>("/users/me/");
+      
       const parsedBalances: Record<Currency, number> = {
-        USD: Number(data.balances.USD || 0),
-        SGD: Number(data.balances.SGD || 0),
-        IDR: Number(data.balances.IDR || 0),
-        MYR: Number(data.balances.MYR || 0),
-        CNY: Number(data.balances.CNY || 0),
+        USD: Number(currentUser?.balance_usd || 0),
+        SGD: Number(currentUser?.balance_sgd || 0),
+        IDR: Number(currentUser?.balance_idr || 0),
+        MYR: Number(currentUser?.balance_myr || 0),
+        CNY: Number(currentUser?.balance_cny || 0),
       };
-      const mappedTransactions: WalletTransaction[] = data.transactions.map(
+
+      // Fetch transaction history
+      const data = await django.get<{ results: any[] }>("/payments/history/");
+      const mappedTransactions: WalletTransaction[] = (data.results || []).map(
         (tx: any) => ({
           id: tx.id,
-          user: "",
-          transaction_type: tx.type === "withdrawal" ? "withdraw" : tx.type,
+          user: tx.user,
+          transaction_type: tx.payment_type || "deposit",
           amount: Number(tx.amount || 0),
           currency: tx.currency,
           status: tx.status,
-          notes: tx.notes,
+          notes: tx.metadata?.notes || "",
           created_at: tx.created_at,
         }),
       );
+
       set({
         totalBalance: parsedBalances,
         transactions: mappedTransactions,

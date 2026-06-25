@@ -1,3 +1,4 @@
+"use client";
 'use client';
 
 import { createStore } from 'zustand/vanilla';

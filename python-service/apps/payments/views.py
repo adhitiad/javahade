@@ -43,7 +43,7 @@ class CreatePaymentView(APIView):
         from typing import cast
         data = cast(dict, serializer.validated_data)
         from django.conf import settings
-        provider_name = getattr(settings, "DEFAULT_PAYMENT_PROVIDER", "stripe")
+        provider_name = data.get("provider", getattr(settings, "DEFAULT_PAYMENT_PROVIDER"))
         provider = get_payment_provider(provider_name)
         result = provider.create_payment(
             amount=float(data["amount"]),
@@ -70,8 +70,12 @@ class CreatePaymentView(APIView):
                 provider_ref=result.provider_ref,
                 metadata=data.get("metadata", {}),
             )
+            response_data = dict(PaymentIntentSerializer(payment).data)
+            if result.provider_ref and result.provider_ref.startswith("go_checkout:"):
+                response_data["checkout_url"] = result.provider_ref.replace("go_checkout:", "")
+            
             return Response(
-                PaymentIntentSerializer(payment).data,
+                response_data,
                 status=status.HTTP_201_CREATED,
             )
 

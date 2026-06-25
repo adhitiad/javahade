@@ -23,6 +23,7 @@ class PaymentIntent(models.Model):
         CONTENT_PURCHASE = "content_purchase", "Content Purchase"
         GIFT = "gift", "Gift"
         BOOKING = "booking", "Booking"
+        DEPOSIT = "deposit", "Deposit"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
