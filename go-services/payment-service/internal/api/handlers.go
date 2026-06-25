@@ -105,7 +105,7 @@ func (h *Handler) GetBalance(c *fiber.Ctx) error {
 
 func (h *Handler) HandleWebhook(providerName string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
-		provider, ok := h.providers[providerName]
+		_, ok := h.providers[providerName]
 		if !ok {
 			return c.Status(fiber.StatusNotFound).SendString("provider not found")
 		}

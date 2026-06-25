@@ -51,13 +51,13 @@ func (w *SagaWorker) handleEvent(event sharedDB.StreamEvent) error {
 
 	payloadStr, ok := event.Payload["payload"].(string)
 	if !ok {
-		return
+		return nil
 	}
 
 	var payload map[string]interface{}
 	if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
 		log.Printf("Failed to unmarshal payload: %v", err)
-		return
+		return nil
 	}
 
 	bookingID, ok := payload["booking_id"].(string)

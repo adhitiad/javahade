@@ -185,7 +185,11 @@ services:
 
   payment-service:
     build:
-      context: ./go-services/payment-service
+      context: ./go-services
+      dockerfile: Dockerfile
+      args:
+        SERVICE_NAME: payment-service
+        MAIN_PATH: cmd/api/main.go
     container_name: kreativa_payment
     environment:
       - DATABASE_URL=postgres://${DB_USER:-kreativa}:${DB_PASSWORD:-kreativa_pass}@postgres:5432/${DB_NAME:-kreativa_db}?sslmode=disable

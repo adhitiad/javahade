@@ -18,11 +18,12 @@ COPY . .
 
 # Argument untuk memilih service mana yang akan di-build
 ARG SERVICE_NAME
+ARG MAIN_PATH=main.go
 
 # Optimization: CGO_ENABLED=0 membuat binary statically linked (tidak bergantung pada C libraries dari OS)
 # GOOS=linux sangat aman agar binary pasti berjalan di container linux
 # ldflags="-s -w" menghapus debug info, membuat ukuran binary jauh lebih kecil
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /go/bin/service ./${SERVICE_NAME}/main.go
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /go/bin/service ./${SERVICE_NAME}/${MAIN_PATH}
 
 # Stage 2: Production Stage (Image super kecil dan aman)
 FROM alpine:latest
