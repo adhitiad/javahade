@@ -1,3 +1,5 @@
+"use client";
+
 import { Footer } from "@/components/layout/footer";
 import { NSFWGate } from "@/components/layout";
 import { useUIStore } from "@/stores/ui-store";

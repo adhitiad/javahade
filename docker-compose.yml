@@ -201,7 +201,7 @@ services:
       - PAXUM_EMAIL=dummy
       - PAXUM_SECRET=dummy
     ports:
-      - "3336:3000"
+      - "3336:3336"
     depends_on:
       pgbouncer:
         condition: service_started

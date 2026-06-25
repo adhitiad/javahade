@@ -116,14 +116,15 @@ class PayPalAdapterProvider(PaymentProvider):
 class GoPaymentAdapterProvider(PaymentProvider):
     def __init__(self, provider_name: str):
         self.provider_name = provider_name
+        import os
         from django.conf import settings
-        self.base_url = getattr(settings, "GO_PAYMENT_SERVICE_URL", "http://localhost:3001/v1")
+        self.base_url = getattr(settings, "GO_PAYMENT_SERVICE_URL", os.getenv("GO_PAYMENT_SERVICE_URL", "http://payment-service:3336/v1"))
 
     def create_payment(self, amount: float, currency: str, metadata: dict) -> PaymentResult:
         try:
             import requests
             payload = {
-                "amount": amount,
+                "amount": int(float(amount) * 100),  # Go service expects int64 (cents)
                 "currency": currency,
                 "provider_preference": self.provider_name,
                 "user_id": str(metadata.get("user_id", "00000000-0000-0000-0000-000000000000"))

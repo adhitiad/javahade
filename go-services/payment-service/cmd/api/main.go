@@ -84,7 +84,11 @@ func main() {
 
 	// Graceful Shutdown
 	go func() {
-		if err := app.Listen(":3001"); err != nil {
+		port := os.Getenv("PORT")
+		if port == "" {
+			port = "3001"
+		}
+		if err := app.Listen(":" + port); err != nil {
 			log.Panic(err)
 		}
 	}()
