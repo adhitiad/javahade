@@ -79,6 +79,9 @@ func main() {
 	app.Use(logger.New())
 
 	// Setup Routes
+	app.Get("/health", func(c *fiber.Ctx) error {
+		return c.JSON(fiber.Map{"status": "ok", "service": "payment"})
+	})
 	handler := api.NewHandler(dbpool, providers)
 	api.SetupRoutes(app, handler)
 

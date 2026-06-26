@@ -3,6 +3,7 @@ import logging
 import uuid
 import re
 from django.utils import timezone
+from opentelemetry import trace
 
 class JSONFormatter(logging.Formatter):
     """
@@ -42,6 +43,12 @@ class JSONFormatter(logging.Formatter):
 
         if record.exc_info:
             log_record["exception"] = self.formatException(record.exc_info)
+
+        # OpenTelemetry Trace ID injection
+        current_span = trace.get_current_span()
+        if current_span and current_span.is_recording():
+            log_record["trace_id"] = format(current_span.get_span_context().trace_id, "032x")
+            log_record["span_id"] = format(current_span.get_span_context().span_id, "016x")
 
         return json.dumps(log_record)
 

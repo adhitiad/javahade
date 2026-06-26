@@ -1,0 +1,31 @@
+# docker-compose.mongo.yml
+version: '3.8'
+services:
+  mongo:
+    image: mongo:6
+    container_name: javahade_mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_ROOT_USERNAME:-mongo_admin}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:-mongo_secret}
+      MONGO_INITDB_DATABASE: ${MONGO_DATABASE:-javahade_mongo}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+      - ./mongo-init:/docker-entrypoint-initdb.d
+    networks:
+      - mongo_network
+    command: [--auth]
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo -u ${MONGO_ROOT_USERNAME:-mongo_admin} -p ${MONGO_ROOT_PASSWORD:-mongo_secret} --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  mongo_data:
+
+networks:
+  mongo_network:
+    driver: bridge

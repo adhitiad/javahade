@@ -63,6 +63,17 @@ services:
     networks:
       - kreativa_net
 
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: kreativa_jaeger
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - kreativa_net
+
   # ==============================================================
   # PYTHON / DJANGO SERVICES
   # ==============================================================

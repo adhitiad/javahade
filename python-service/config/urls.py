@@ -6,7 +6,11 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 
+from apps.core_ui.views.health import health_check
+
 urlpatterns = [
+    # Health Check
+    path("health/", health_check, name="health_check"),
     # Root: Landing & Feed (OnlyFans style)
     path("", include("apps.core_ui.urls")),
     # Admin

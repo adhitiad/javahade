@@ -53,6 +53,7 @@ LOCAL_APPS = [
     "apps.booking",
     "apps.streaming_ui",
     "apps.core_ui",
+    "apps.mongo_app",
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -113,11 +114,26 @@ DATABASES = {
     "default": dj_database_url.config(
         default=config(
             "DATABASE_URL",
-            default="postgres://javahade:javahade_pass@localhost:5432/javahade_db",
+            default="postgres://javahade_user:secret_password@localhost:5432/javahade_db",
         ),  # type: ignore
         conn_max_age=600,
-    )
+    ),
+    "mongo": {
+        "ENGINE": "djongo",
+        "NAME": config("MONGO_DATABASE", default="javahade_mongo"),
+        "CLIENT": {
+            "host": config("MONGO_HOST", default="localhost"),
+            "port": config("MONGO_PORT", default=27017, cast=int),
+            "username": config("MONGO_ROOT_USERNAME", default="mongo_admin"),
+            "password": config("MONGO_ROOT_PASSWORD", default="mongo_secret"),
+            "authSource": "admin",
+            "authMechanism": "SCRAM-SHA-256",
+        }
+    }
 }
+
+# Database router for MongoDB
+DATABASE_ROUTERS = ['config.routers.MongoRouter']
 
 # =============================================================================
 # Cache — Redis
