@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useStreamingStore } from '@/stores/streaming-store';
 import { useUIStore } from '@/stores/ui-store';
+import { useAuthStore } from '@/stores/auth-store';
 import type { LiveStream } from '@/types';
 
 // Import extracted components
@@ -20,6 +21,8 @@ export default function StreamingView() {
 
   const { streams, currentStream, fetchStreams, fetchStreamDetail, buyTicket } = useStreamingStore();
   const { addToast } = useUIStore();
+  const { user } = useAuthStore();
+  const isCreator = user?.role === 'host' || user?.role === 'admin' || user?.role === 'superadmin';
 
   useEffect(() => {
     fetchStreams();
@@ -113,8 +116,15 @@ export default function StreamingView() {
             Tonton host favoritmu secara langsung
           </p>
         </div>
-        <div className="flex gap-1 bg-zinc-900/50 border border-white/5 p-1 rounded-xl glass">
-          {([
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          {isCreator && (
+            <Button className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-400 hover:to-pink-500 text-white shadow-lg w-full sm:w-auto font-semibold">
+              <Sparkles className="size-4 mr-2" />
+              Mulai Live
+            </Button>
+          )}
+          <div className="flex gap-1 bg-zinc-900/50 border border-white/5 p-1 rounded-xl glass">
+            {([
             { key: 'all', label: 'Semua', count: streams.length },
             { key: 'live', label: 'Live', count: liveCount },
             { key: 'scheduled', label: 'Terjadwal', count: upcomingCount },
@@ -134,6 +144,7 @@ export default function StreamingView() {
           ))}
         </div>
       </div>
+    </div>
 
       {/* Stream Grid */}
       {filteredStreams.length > 0 ? (

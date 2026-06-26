@@ -147,7 +147,7 @@ export default function ManageTiersView() {
           </p>
         </div>
         <Button
-          onClick={() => router.push('/creator/' + (user?.username ?? ''))}
+          onClick={() => router.push('/u/' + (user?.username ?? ''))}
           variant="outline"
           className="bg-white/5 border-white/10 hover:bg-white/10 text-white rounded-xl gap-2 h-12 px-5 self-start sm:self-center"
         >

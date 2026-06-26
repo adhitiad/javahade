@@ -266,7 +266,7 @@ export function Navbar() {
               <DropdownMenuGroup>
                 <DropdownMenuItem
                   className="cursor-pointer"
-                  onClick={() => router.push('/settings')}
+                  onClick={() => router.push(`/u/${user?.username ?? ''}`)}
                 >
                   <User className="size-4" />
                   Profile
@@ -281,7 +281,7 @@ export function Navbar() {
                 {isHost && (
                   <DropdownMenuItem
                     className="cursor-pointer"
-                    onClick={() => router.push('/creator/' + (user?.username ?? ''))}
+                    onClick={() => router.push('/host/dashboard')}
                   >
                     <LayoutDashboard className="size-4" />
                     Creator Dashboard

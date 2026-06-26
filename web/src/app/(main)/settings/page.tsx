@@ -320,7 +320,13 @@ function PaymentSettings() {
           <h3 className="text-xl font-semibold">Belum ada metode pembayaran</h3>
           <p className="text-muted-foreground max-w-md mx-auto">Tambahkan kartu kredit/debit atau dompet digital untuk mempermudah transaksi Anda di masa depan.</p>
         </div>
-        <Button size="lg" className="shadow-lg hover:shadow-xl transition-all">
+        <Button 
+          size="lg" 
+          className="shadow-lg hover:shadow-xl transition-all"
+          onClick={() => {
+            toast.info("Sistem saat ini menggunakan Dompet Finansial (Wallet). Silakan akses menu Dompet untuk top-up saldo.");
+          }}
+        >
           Tambah Metode Pembayaran
         </Button>
       </CardContent>

@@ -48,7 +48,7 @@ interface NavItem {
 const NAV_ITEMS: NavItem[] = [
   { label: 'Feed', icon: Home, href: '/' },
   { label: 'Search', icon: Search, href: '/search' },
-  { label: 'Creator Profile', icon: UserCircle, href: '/creator' },
+  { label: 'My Profile', icon: UserCircle, href: '/u/' },
   { label: 'Booking', icon: CalendarCheck, href: '/booking' },
   { label: 'Wallet', icon: Wallet, href: '/wallet' },
   { label: 'Live Streaming', icon: Radio, href: '/streaming' },
@@ -57,7 +57,7 @@ const NAV_ITEMS: NavItem[] = [
 ];
 
 const HOST_ITEMS: NavItem[] = [
-  { label: 'Host Dashboard', icon: LayoutDashboard, href: '/creator', role: 'host' },
+  { label: 'Host Dashboard', icon: LayoutDashboard, href: '/host/dashboard', role: 'host' },
   { label: 'My Tiers', icon: Layers, href: '/host/tiers', role: 'host' },
   { label: 'Manage Rates', icon: DollarSign, href: '/booking', role: 'host' },
 ];
@@ -142,14 +142,20 @@ export function Sidebar() {
         {/* Navigation Links */}
         <ScrollArea className="flex-1 px-3 py-3">
           <nav className="flex flex-col gap-1" aria-label="Main navigation">
-            {NAV_ITEMS.map((item) => (
-              <SidebarNavLink
-                key={item.href}
-                item={item}
-                isActive={isActive(item.href)}
-                onClick={() => handleNavigate(item.href)}
-              />
-            ))}
+            {NAV_ITEMS.map((item) => {
+              let finalHref = item.href;
+              if (item.label === 'My Profile' && user) {
+                finalHref = `/u/${user.username}`;
+              }
+              return (
+                <SidebarNavLink
+                  key={item.href}
+                  item={{ ...item, href: finalHref }}
+                  isActive={isActive(finalHref)}
+                  onClick={() => handleNavigate(finalHref)}
+                />
+              );
+            })}
 
             {/* Become Host Link (Female user only) */}
             {user && !isHost && !isAdmin && user.gender === 'F' && (

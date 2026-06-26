@@ -74,33 +74,54 @@ export default function CreatorProfileView() {
       try {
         const { api } = await import("@/lib/api");
 
-        // Fetch Creator Profile
-        const profile = await api.get<CreatorProfile>(
-          `/creators/${currentCreatorUsername}/`,
+        // Fetch Universal User Profile
+        const rawProfile = await api.get<any>(
+          `/users/profile/${currentCreatorUsername}/`,
         );
-        setCreatorProfile(profile);
+        
+        // Map to expected CreatorProfile structure
+        const mappedProfile = rawProfile.creator_profile ? {
+          ...rawProfile.creator_profile,
+          user: rawProfile
+        } : {
+          id: rawProfile.id,
+          display_name: rawProfile.username,
+          category: 'User',
+          subscription_price: 0,
+          subscriber_count: 0,
+          is_approved: true,
+          user: rawProfile
+        };
+        
+        setCreatorProfile(mappedProfile as CreatorProfile);
 
-        // Fetch posts
-        try {
-          const fetchedPosts = await api.get<any>(
-            `/posts/creator/${currentCreatorUsername}/`,
-          );
-          setPosts(
-            fetchedPosts.results
-              ? fetchedPosts.results
-              : Array.isArray(fetchedPosts)
-                ? fetchedPosts
-                : [],
-          );
-        } catch (e) {
-          console.error("Gagal memuat post:", e);
+        if (rawProfile.role === 'host') {
+          // Fetch posts
+          try {
+            const fetchedPosts = await api.get<any>(
+              `/posts/creator/${currentCreatorUsername}/`,
+            );
+            setPosts(
+              fetchedPosts.results
+                ? fetchedPosts.results
+                : Array.isArray(fetchedPosts)
+                  ? fetchedPosts
+                  : [],
+            );
+          } catch (e) {
+            console.error("Gagal memuat post:", e);
+          }
+
+          // Fetch tiers
+          try {
+            const fetchedTiers = await api.get<SubscriptionTier[]>(
+              `/subscriptions/tiers/?creator=${currentCreatorUsername}`,
+            );
+            setTiers(fetchedTiers);
+          } catch (e) {
+            console.error("Gagal memuat tiers:", e);
+          }
         }
-
-        // Fetch tiers
-        const fetchedTiers = await api.get<SubscriptionTier[]>(
-          `/subscriptions/tiers/?creator=${currentCreatorUsername}`,
-        );
-        setTiers(fetchedTiers);
 
         // Fetch my active subscriptions
         try {
@@ -263,8 +284,9 @@ export default function CreatorProfileView() {
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         {/* Tabs Section */}
-        <Tabs defaultValue="posts" className="w-full pb-12">
-          <TabsList className="w-full sm:w-auto mt-4">
+        {typeof creatorProfile?.user === 'object' && creatorProfile?.user?.role === 'host' && (
+          <Tabs defaultValue="posts" className="w-full pb-12">
+            <TabsList className="w-full sm:w-auto mt-4">
             <TabsTrigger value="posts" className="gap-1.5">
               <FileText className="size-4" />
               Postingan
@@ -352,8 +374,9 @@ export default function CreatorProfileView() {
                 <p className="text-sm">Belum ada ulasan</p>
               </div>
             </div>
-          </TabsContent>
-        </Tabs>
+            </TabsContent>
+          </Tabs>
+        )}
       </div>
 
       {/* Buy Chat Modal */}

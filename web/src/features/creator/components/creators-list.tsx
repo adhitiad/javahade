@@ -283,7 +283,7 @@ export default function CreatorsList() {
                 key={creator.id}
                 creator={creator}
                 index={i}
-                onClick={() => router.push(`/creator/${creator.user}`)}
+                onClick={() => router.push(`/u/${creator.user}`)}
               />
             ))}
           </div>

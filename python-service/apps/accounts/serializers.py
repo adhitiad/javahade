@@ -12,6 +12,8 @@ User = get_user_model()
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    _current_request = None
+
     @classmethod
     def get_token(cls, user):
         token = super().get_token(user)
@@ -89,7 +91,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        user = User.objects.create_user(
+        user = User.objects.create_user(  # type: ignore
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"],
@@ -129,6 +131,7 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         avatar = validated_data.get("avatar")
         if avatar:
+            # pyrefly: ignore [missing-import]
             from apps.moderation.services import ContentModerationService
             from django.core.exceptions import ValidationError
             from rest_framework.exceptions import ValidationError as DRFValidationError
@@ -147,6 +150,27 @@ class UserPublicSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ["id", "username", "avatar", "bio", "role", "is_verified"]
+
+
+class CreatorProfileBasicSerializer(serializers.ModelSerializer):
+    """Basic creator profile for universal profile endpoint."""
+    
+    class Meta:
+        model = CreatorProfile
+        fields = [
+            "id", "display_name", "category", "cover_image", 
+            "subscription_price", "subscriber_count", "is_approved", 
+            "website", "social_links", "created_at"
+        ]
+
+
+class UserProfileUniversalSerializer(UserPublicSerializer):
+    """Universal profile combining User and optionally CreatorProfile."""
+    
+    creator_profile = CreatorProfileBasicSerializer(read_only=True)
+
+    class Meta(UserPublicSerializer.Meta):
+        fields = UserPublicSerializer.Meta.fields + ["creator_profile"]
 
 
 class CreatorProfileSerializer(serializers.ModelSerializer):

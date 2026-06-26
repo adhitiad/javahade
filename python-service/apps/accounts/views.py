@@ -2,7 +2,6 @@
 Accounts views — registration, user profile, creator management.
 """
 
-from django.contrib.auth import get_user_model
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import generics, permissions, status
 from rest_framework.filters import OrderingFilter, SearchFilter
@@ -10,7 +9,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import CreatorProfile
+from .models import CreatorProfile, User
 from .permissions import IsCreator, IsOwnerOrReadOnly
 from .serializers import (
     CreatorApplySerializer,
@@ -19,9 +18,8 @@ from .serializers import (
     RegisterSerializer,
     UserPublicSerializer,
     UserSerializer,
+    UserProfileUniversalSerializer,
 )
-
-User = get_user_model()
 
 
 # ─────────────────────────────────────────────
@@ -99,13 +97,13 @@ class CustomCookieTokenRefreshView(TokenRefreshView):
     """
     def post(self, request, *args, **kwargs):
         # Ambil refresh token dari cookie jika tidak ada di body
-        refresh_token = request.data.get("refresh")
+        refresh_token = request.data.get("refresh") if isinstance(request.data, dict) else None
         if not refresh_token:
             refresh_token = request.COOKIES.get("refresh_token")
             
         if refresh_token:
             # Masukkan ke dalam request data agar serializer memprosesnya
-            mutable_data = request.data.copy() if hasattr(request.data, "copy") else {}
+            mutable_data = request.data.copy() if isinstance(request.data, dict) else {}
             mutable_data["refresh"] = refresh_token
             request._full_data = mutable_data
             
@@ -213,7 +211,7 @@ class SocialLoginView(APIView):
         # Generate JWT Tokens
         from .serializers import CustomTokenObtainPairSerializer
         refresh = CustomTokenObtainPairSerializer.get_token(user)
-        access_token = str(refresh.access_token)
+        access_token = str(getattr(refresh, "access_token", ""))
         refresh_token = str(refresh)
 
         response = Response({
@@ -265,8 +263,17 @@ class UserDetailView(generics.RetrieveAPIView):
 
     serializer_class = UserPublicSerializer
     permission_classes = [permissions.AllowAny]
-    queryset = User.objects.all()
     lookup_field = "id"
+
+
+class UserUniversalProfileView(generics.RetrieveAPIView):
+    """GET /api/v1/users/profile/{username}/ — Universal public user profile."""
+
+    serializer_class = UserProfileUniversalSerializer
+    permission_classes = [permissions.AllowAny]
+    queryset = User.objects.all().prefetch_related("creator_profile")
+    lookup_field = "username"
+    lookup_url_kwarg = "username"
 
 class UserDeleteView(APIView):
     """DELETE /api/v1/users/me/ — GDPR Right to Erasure (Data Scrubbing)."""

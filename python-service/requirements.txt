@@ -27,3 +27,4 @@ opentelemetry-exporter-otlp
 pytest-django
 djongo
 pymongo[srv]
+pytz

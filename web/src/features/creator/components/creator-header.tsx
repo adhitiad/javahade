@@ -26,6 +26,8 @@ export function CreatorHeader({
   handleCancelSubscription,
   handleChatClick,
 }: CreatorHeaderProps) {
+  const isHostProfile = typeof creatorProfile.user === 'object' && creatorProfile.user?.role === 'host';
+
   return (
     <>
       <div className="relative h-48 sm:h-64 md:h-72 bg-gradient-to-br from-violet-500 via-purple-500 to-fuchsia-500">
@@ -78,97 +80,101 @@ export function CreatorHeader({
         </p>
 
         {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <div className="flex flex-col items-center p-4 rounded-xl bg-muted/50">
-            <FileStack className="size-5 text-muted-foreground mb-1.5" />
-            <span className="text-xl font-bold">
-              {creatorProfile.post_count ?? 0}
-            </span>
-            <span className="text-xs text-muted-foreground">Postingan</span>
+        {isHostProfile && (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="flex flex-col items-center p-4 rounded-xl bg-muted/50">
+              <FileStack className="size-5 text-muted-foreground mb-1.5" />
+              <span className="text-xl font-bold">
+                {creatorProfile.post_count ?? 0}
+              </span>
+              <span className="text-xs text-muted-foreground">Postingan</span>
+            </div>
+            <div className="flex flex-col items-center p-4 rounded-xl bg-muted/50">
+              <Users className="size-5 text-muted-foreground mb-1.5" />
+              <span className="text-xl font-bold">
+                {formatCount(creatorProfile.subscriber_count)}
+              </span>
+              <span className="text-xs text-muted-foreground">Pelanggan</span>
+            </div>
+            <div className="flex flex-col items-center p-4 rounded-xl bg-muted/50">
+              <Star className="size-5 text-amber-500 mb-1.5" />
+              <span className="text-xl font-bold">
+                {creatorProfile.rating?.toFixed(1) ?? "0.0"}
+              </span>
+              <span className="text-xs text-muted-foreground">Rating</span>
+            </div>
           </div>
-          <div className="flex flex-col items-center p-4 rounded-xl bg-muted/50">
-            <Users className="size-5 text-muted-foreground mb-1.5" />
-            <span className="text-xl font-bold">
-              {formatCount(creatorProfile.subscriber_count)}
-            </span>
-            <span className="text-xs text-muted-foreground">Pelanggan</span>
-          </div>
-          <div className="flex flex-col items-center p-4 rounded-xl bg-muted/50">
-            <Star className="size-5 text-amber-500 mb-1.5" />
-            <span className="text-xl font-bold">
-              {creatorProfile.rating?.toFixed(1) ?? "0.0"}
-            </span>
-            <span className="text-xs text-muted-foreground">Rating</span>
-          </div>
-        </div>
+        )}
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap gap-2 mb-8">
-          {isSubscribed ? (
+        {isHostProfile && (
+          <div className="flex flex-wrap gap-2 mb-8">
+            {isSubscribed ? (
+              <Button
+                size="lg"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={handleCancelSubscription}
+              >
+                <CheckCircle className="size-4 mr-2" />
+                Langganan Aktif (Batalkan)
+              </Button>
+            ) : (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button size="lg">
+                    <Users className="size-4 mr-2" />
+                    Berlangganan
+                    <ChevronDown className="size-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="w-72">
+                  {isLoadingTiers ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground">
+                      Memuat paket...
+                    </div>
+                  ) : (
+                    tiers.map((tier) => (
+                      <DropdownMenuItem
+                        key={tier.id}
+                        className="flex flex-col items-start gap-1 p-3 cursor-pointer"
+                        onClick={() => handleSubscribe(tier.id, tier.name)}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className="font-semibold">{tier.name}</span>
+                          <span className="text-sm font-bold text-primary">
+                            Rp {Number(tier.price).toLocaleString("id-ID")}
+                            <span className="text-xs text-muted-foreground font-normal">
+                              /bln
+                            </span>
+                          </span>
+                        </div>
+                        {tier.benefits && tier.benefits.length > 0 && (
+                          <ul className="text-xs text-muted-foreground space-y-0.5 mt-1">
+                            {tier.benefits.map((b, i) => (
+                              <li key={i} className="flex items-center gap-1">
+                                <CheckCircle className="size-3 text-emerald-500 shrink-0" />
+                                {b}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             <Button
               size="lg"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={handleCancelSubscription}
+              variant="secondary"
+              className="flex-1 sm:flex-none"
+              onClick={handleChatClick}
             >
-              <CheckCircle className="size-4 mr-2" />
-              Langganan Aktif (Batalkan)
+              Chat Pribadi
             </Button>
-          ) : (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button size="lg">
-                  <Users className="size-4 mr-2" />
-                  Berlangganan
-                  <ChevronDown className="size-4 ml-1" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-72">
-                {isLoadingTiers ? (
-                  <div className="p-4 text-center text-xs text-muted-foreground">
-                    Memuat paket...
-                  </div>
-                ) : (
-                  tiers.map((tier) => (
-                    <DropdownMenuItem
-                      key={tier.id}
-                      className="flex flex-col items-start gap-1 p-3 cursor-pointer"
-                      onClick={() => handleSubscribe(tier.id, tier.name)}
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-semibold">{tier.name}</span>
-                        <span className="text-sm font-bold text-primary">
-                          Rp {Number(tier.price).toLocaleString("id-ID")}
-                          <span className="text-xs text-muted-foreground font-normal">
-                            /bln
-                          </span>
-                        </span>
-                      </div>
-                      {tier.benefits && tier.benefits.length > 0 && (
-                        <ul className="text-xs text-muted-foreground space-y-0.5 mt-1">
-                          {tier.benefits.map((b, i) => (
-                            <li key={i} className="flex items-center gap-1">
-                              <CheckCircle className="size-3 text-emerald-500 shrink-0" />
-                              {b}
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </DropdownMenuItem>
-                  ))
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-          )}
-
-          <Button
-            size="lg"
-            variant="secondary"
-            className="flex-1 sm:flex-none"
-            onClick={handleChatClick}
-          >
-            Chat Pribadi
-          </Button>
-        </div>
+          </div>
+        )}
       </div>
     </>
   );

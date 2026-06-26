@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.urls import include, path
 from django.views.generic import RedirectView
 
-from apps.core_ui.views.health import health_check
+from apps.core_ui.health import health_check
 
 urlpatterns = [
     # Health Check

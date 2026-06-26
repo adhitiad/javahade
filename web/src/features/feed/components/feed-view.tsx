@@ -80,19 +80,17 @@ export default function FeedView() {
   // ── Nav items (mirror feed.html) ─────────────────────────────────────────
   const navItems = [
     { href: "/", label: "Beranda", icon: <Home className="size-5" />, active: true, color: "text-purple-400 bg-purple-600/20" },
+    { href: "/booking", label: "Booking Privat", icon: <Ticket className="size-5" />, color: "text-gray-400 hover:bg-white/5 hover:text-white" },
+    { href: "/streaming", label: "Live Stream", icon: <Radio className="size-5" />, color: "text-gray-400 hover:bg-white/5 hover:text-white" },
     { href: "/wallet", label: "Dompet Finansial", icon: <Wallet className="size-5" />, color: "text-emerald-400 hover:bg-emerald-500/10" },
     ...(isAdmin ? [{ href: "/admin", label: "Dasbor Admin", icon: <ShieldCheck className="size-5" />, color: "text-red-400 hover:bg-red-500/10" }] : []),
     ...(isCreator ? [
-      { href: `/creator/${user?.username ?? ""}`, label: "Profil Saya", icon: <User className="size-5" />, color: "text-gray-400 hover:bg-white/5 hover:text-white" },
+      { href: `/u/${user?.username ?? ""}`, label: "Profil Saya", icon: <User className="size-5" />, color: "text-gray-400 hover:bg-white/5 hover:text-white" },
       { href: "/bookings/host", label: "Pesanan Masuk", icon: <CalendarCheck className="size-5" />, color: "text-gray-400 hover:bg-white/5 hover:text-white" },
     ] : user?.gender === "F" ? [
       { href: "/become-host", label: "Jadi Host", icon: <Star className="size-5" />, color: "text-pink-400 hover:bg-white/5 hover:text-pink-300" },
     ] : []),
     { href: "/family", label: "Family", icon: <Users className="size-5" />, color: "text-gray-400 hover:bg-white/5 hover:text-white" },
-    ...(isCreator || isAdmin ? [
-      { href: "/live", label: "Live Stream", icon: <Radio className="size-5" />, color: "text-gray-400 hover:bg-white/5 hover:text-white" },
-      { href: "/bookings", label: "Pesanan Privat", icon: <Ticket className="size-5" />, color: "text-gray-400 hover:bg-white/5 hover:text-white" },
-    ] : []),
   ];
 
   return (
@@ -295,7 +293,7 @@ export default function FeedView() {
                   </div>
                 </div>
                 <Link
-                  href={`/creator/${creator.username}`}
+                  href={`/u/${creator.username}`}
                   className="text-xs font-bold text-purple-400 hover:text-purple-300 transition-colors"
                 >
                   Lihat
