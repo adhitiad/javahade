@@ -180,6 +180,18 @@ class SocialLoginView(APIView):
         # "sandingkan dgn email" - Link account by email
         user = User.objects.filter(email=email).first()
         
+        totp_code = request.data.get("totp_code")
+        
+        if user:
+            # 2FA Check
+            if getattr(user, 'is_2fa_enabled', False):
+                if not totp_code:
+                    return Response({"detail": "2fa_required"}, status=status.HTTP_400_BAD_REQUEST)
+                import pyotp
+                totp = pyotp.TOTP(user.totp_secret)
+                if not totp.verify(totp_code):
+                    return Response({"detail": "invalid_2fa_code"}, status=status.HTTP_400_BAD_REQUEST)
+        
         if not user:
             import uuid
             # Create new user

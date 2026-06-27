@@ -5,6 +5,7 @@ Accounts serializers — registration, login, user profiles.
 from django.contrib.auth import get_user_model
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+import pyotp
 
 from .models import CreatorProfile, KYCDocument
 
@@ -39,6 +40,19 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         self.__class__._current_request = self.context.get("request")
         try:
             data = super().validate(attrs)
+            user = self.user
+            if getattr(user, 'is_2fa_enabled', False):
+                request = self.context.get("request")
+                totp_code = None
+                if request and hasattr(request, "data") and isinstance(request.data, dict):
+                    totp_code = request.data.get("totp_code")
+                if not totp_code:
+                    raise serializers.ValidationError({"detail": "2fa_required"})
+                
+         
+                totp = pyotp.TOTP(getattr(user, "totp_secret", ""))
+                if not totp.verify(totp_code):
+                    raise serializers.ValidationError({"totp_code": "Kode 2FA tidak valid."})
         finally:
             self.__class__._current_request = None
         return data
@@ -114,16 +128,18 @@ class UserSerializer(serializers.ModelSerializer):
             "username",
             "email",
             "avatar",
+            "cover_image",
             "bio",
             "role",
             "gender",
             "is_verified",
             "date_of_birth",
             "has_creator_profile",
+            "is_2fa_enabled",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "role", "is_verified", "created_at"]
+        read_only_fields = ["id", "role", "is_verified", "is_2fa_enabled", "created_at"]
 
     def get_has_creator_profile(self, obj):
         return hasattr(obj, "creator_profile")
@@ -149,7 +165,7 @@ class UserPublicSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "avatar", "bio", "role", "is_verified"]
+        fields = ["id", "username", "avatar", "cover_image", "bio", "role", "is_verified"]
 
 
 class CreatorProfileBasicSerializer(serializers.ModelSerializer):

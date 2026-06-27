@@ -53,6 +53,8 @@ class User(AbstractUser):
     recovery_codes = models.JSONField(default=list, blank=True, help_text="12 Angka pemulihan akun (1-99)")
     jwt_secret_version = models.IntegerField(default=1, verbose_name="JWT Secret Version (Log out All)")
     transaction_pin = models.CharField(max_length=128, blank=True, null=True, verbose_name="PIN Transaksi (Hashed)")
+    totp_secret = models.CharField(max_length=32, blank=True, null=True, verbose_name="TOTP Secret untuk 2FA")
+    is_2fa_enabled = models.BooleanField(default=False, verbose_name="2FA Aktif")
     
     # Privasi & GDPR & Pengaturan
     has_accepted_cookies = models.BooleanField(default=False, verbose_name="Cookie Consent")

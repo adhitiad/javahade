@@ -125,8 +125,9 @@ export default function CreatorProfileView() {
 
         // Fetch my active subscriptions
         try {
-          const mySubs = await api.get<any[]>("/subscriptions/my/");
-          const activeSub = mySubs.find(
+          const mySubs: any = await api.get<any>("/subscriptions/my/");
+          const subsArray = Array.isArray(mySubs) ? mySubs : (mySubs.results || []);
+          const activeSub = subsArray.find(
             (sub: any) =>
               sub.status === "active" &&
               sub.tier?.creator?.username === currentCreatorUsername,

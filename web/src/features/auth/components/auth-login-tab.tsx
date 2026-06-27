@@ -24,11 +24,50 @@ export function AuthLoginTab({ onSwitchTab }: { onSwitchTab: (tab: string) => vo
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [is2FARequired, setIs2FARequired] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
 
   const form = useForm<LoginInput>({
     resolver: zodResolver(loginSchema),
     defaultValues: { email: '', password: '' },
   });
+
+  const handle2FASubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    setIsLoading(true);
+    try {
+      const syncRes = await fetch('/api/auth/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ totp_code: twoFactorCode })
+      });
+      if (syncRes.ok) {
+        const syncData = await syncRes.json();
+        if (syncData.tokens?.access) {
+          localStorage.setItem('access_token', syncData.tokens.access);
+        }
+        if (syncData.tokens?.refresh) {
+          localStorage.setItem('refresh_token', syncData.tokens.refresh);
+        }
+        toast.success('Berhasil masuk!');
+        window.location.href = '/';
+      } else {
+        const syncData = await syncRes.json();
+        setError(syncData.error || 'Kode 2FA tidak valid');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Terjadi kesalahan');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const cancel2FA = async () => {
+    setIs2FARequired(false);
+    setTwoFactorCode("");
+    await authClient.signOut();
+  };
 
   const onSubmit = async (data: LoginInput) => {
     setError(null);
@@ -46,7 +85,7 @@ export function AuthLoginTab({ onSwitchTab }: { onSwitchTab: (tab: string) => vo
 
       // Sync Better Auth session ke Django agar Go services bisa autentikasi
       try {
-        const syncRes = await fetch('/api/auth/sync');
+        const syncRes = await fetch('/api/auth/sync', { method: 'POST' });
         if (syncRes.ok) {
           const syncData = await syncRes.json();
           // Simpan JWT tokens dari Django ke localStorage
@@ -56,21 +95,60 @@ export function AuthLoginTab({ onSwitchTab }: { onSwitchTab: (tab: string) => vo
           if (syncData.tokens?.refresh) {
             localStorage.setItem('refresh_token', syncData.tokens.refresh);
           }
+          toast.success('Berhasil masuk!');
+          window.location.href = '/'; 
         } else {
-          console.warn('Django sync gagal, melanjutkan dengan Better Auth session saja');
+          const syncData = await syncRes.json();
+          if (syncData.error === '2fa_required') {
+            setIs2FARequired(true);
+            return; // Stay on loading false, wait for 2FA
+          }
+          console.warn('Django sync gagal:', syncData);
+          toast.success('Berhasil masuk, namun sinkronisasi gagal.');
+          window.location.href = '/';
         }
       } catch (syncErr) {
         console.warn('Django sync error:', syncErr);
+        toast.success('Berhasil masuk!');
+        window.location.href = '/';
       }
-
-      toast.success('Berhasil masuk!');
-      window.location.href = '/'; 
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan');
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (is2FARequired) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="text-center space-y-2 mb-2">
+          <h3 className="font-semibold">Verifikasi Dua Faktor</h3>
+          <p className="text-sm text-muted-foreground">Masukkan 6 digit kode dari aplikasi authenticator Anda.</p>
+        </div>
+        <form onSubmit={handle2FASubmit} className="flex flex-col gap-4">
+          <Input
+            value={twoFactorCode}
+            onChange={(e) => {
+              setError(null);
+              setTwoFactorCode(e.target.value);
+            }}
+            placeholder="000000"
+            className="text-center text-2xl tracking-[0.5em] font-mono h-14"
+            maxLength={6}
+            autoFocus
+          />
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          <Button type="submit" disabled={isLoading || twoFactorCode.length !== 6}>
+            {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Verifikasi'}
+          </Button>
+          <Button type="button" variant="ghost" onClick={cancel2FA} disabled={isLoading}>
+            Batal
+          </Button>
+        </form>
+      </div>
+    );
+  }
 
   return (
     <Form {...form}>

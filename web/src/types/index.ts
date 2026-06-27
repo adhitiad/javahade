@@ -84,6 +84,7 @@ export interface User {
   email: string;
   username: string;
   avatar?: string;
+  cover_image?: string;
   bio?: string;
   gender: Gender;
   role: UserRole;
@@ -96,6 +97,7 @@ export interface User {
   balance_cny: number;
   is_elite_fan: boolean;
   has_accepted_cookies: boolean;
+  is_2fa_enabled: boolean;
   created_at: string;
 }
 

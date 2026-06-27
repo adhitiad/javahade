@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 
-export async function GET(request: NextRequest) {
+async function handleSync(request: NextRequest) {
   console.log("[SYNC ROUTE] Start handling sync request");
   try {
     // 1. Get the session from Better Auth
@@ -23,11 +23,21 @@ export async function GET(request: NextRequest) {
     const djangoApiUrl = process.env.INTERNAL_API_URL || process.env.NEXT_PUBLIC_DJANGO_API_URL?.replace('/api/v1', '') || "http://localhost:8000";
     const serviceToken = process.env.INTERNAL_SERVICE_TOKEN as string;
 
+    // Check if body has totp_code
+    let totpCode = "";
+    try {
+      const body = await request.json();
+      totpCode = body.totp_code || "";
+    } catch (e) {
+      // Ignore if no JSON body
+    }
+
     const payload = {
       email: session.user.email,
       name: session.user.name,
       avatar: session.user.image || "",
       provider: "better-auth",
+      ...(totpCode && { totp_code: totpCode }),
     };
 
     console.log("[SYNC ROUTE] Calling Django at:", `${djangoApiUrl}/api/v1/auth/social-login/`);
@@ -44,8 +54,14 @@ export async function GET(request: NextRequest) {
     if (!djangoRes.ok) {
       const errorText = await djangoRes.text();
       console.error("[SYNC ROUTE] Django Sync Failed:", errorText);
+      let errorDetail = "Failed to sync with backend.";
+      try {
+        const parsed = JSON.parse(errorText);
+        if (parsed.detail) errorDetail = parsed.detail;
+      } catch (e) {}
+      
       return NextResponse.json(
-        { error: "Failed to sync with backend." },
+        { error: errorDetail },
         { status: djangoRes.status }
       );
     }
@@ -99,3 +115,6 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export const GET = handleSync;
+export const POST = handleSync;

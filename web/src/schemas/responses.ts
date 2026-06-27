@@ -25,6 +25,7 @@ export const userResponseSchema = z.object({
   balance_cny: z.number().default(0),
   is_elite_fan: z.boolean().default(false),
   has_accepted_cookies: z.boolean().default(false),
+  is_2fa_enabled: z.boolean().default(false),
   created_at: z.string(),
 }).catchall(z.any()); // Allow extra fields
 

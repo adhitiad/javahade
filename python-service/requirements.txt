@@ -28,3 +28,4 @@ pytest-django
 djongo
 pymongo[srv]
 pytz
+pyotp==2.9.0
