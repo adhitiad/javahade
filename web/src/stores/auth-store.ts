@@ -16,6 +16,7 @@ export interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  needs2FA: boolean;
 
   login: (email: string, password: string) => Promise<void>;
   register: (data: {
@@ -26,7 +27,9 @@ export interface AuthState {
     gender: string;
     date_of_birth: string;
   }) => Promise<void>;
-  syncSocialLogin: () => Promise<void>;
+  syncSocialLogin: () => Promise<boolean>;
+  submitSocial2FA: (totpCode: string) => Promise<void>;
+  cancelSocial2FA: () => void;
   logout: () => void;
   logoutAll: () => Promise<void>;
   fetchUser: () => Promise<void>;
@@ -43,6 +46,7 @@ export const createAuthStore = () => createStore<AuthState>()(
       isAuthenticated: false,
       isLoading: false,
       error: null,
+      needs2FA: false,
 
       login: async (email: string, password: string) => {
         set({ isLoading: true, error: null });
@@ -70,19 +74,77 @@ export const createAuthStore = () => createStore<AuthState>()(
       },
 
       syncSocialLogin: async () => {
-        set({ isLoading: true, error: null });
+        set({ isLoading: true, error: null, needs2FA: false });
         try {
-          // Call the Next.js API route we just created
+          // Call the Next.js API route
           // It checks Better Auth session and forwards it to Django
-          const res = await fetch("/api/auth/sync");
+          const res = await fetch("/api/auth/sync", { method: "POST" });
+
           if (!res.ok) {
-            throw new Error("Failed to sync social login with backend");
+            const data = await res.json().catch(() => ({}));
+
+            // Django returned 2fa_required — show 2FA dialog
+            if (data.error === "2fa_required") {
+              set({ needs2FA: true, isLoading: false });
+              return true;
+            }
+
+            throw new Error(data.error || "Failed to sync social login with backend");
           }
+
+          // Sync successful — store tokens and fetch user
+          const syncData = await res.json();
+          if (syncData.tokens?.access) {
+            localStorage.setItem("access_token", syncData.tokens.access);
+          }
+          if (syncData.tokens?.refresh) {
+            localStorage.setItem("refresh_token", syncData.tokens.refresh);
+          }
+
           await get().fetchUser();
+          return false;
         } catch (err) {
           set({ error: (err as Error).message, isLoading: false });
           throw err;
         }
+      },
+
+      submitSocial2FA: async (totpCode: string) => {
+        set({ isLoading: true, error: null });
+        try {
+          const res = await fetch("/api/auth/sync", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ totp_code: totpCode }),
+          });
+
+          if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            const message = data.error === "invalid_2fa_code"
+              ? "Kode 2FA tidak valid. Silakan coba lagi."
+              : data.error || "Verifikasi 2FA gagal.";
+            set({ error: message, isLoading: false });
+            return;
+          }
+
+          // 2FA passed — store tokens and fetch user
+          const syncData = await res.json();
+          if (syncData.tokens?.access) {
+            localStorage.setItem("access_token", syncData.tokens.access);
+          }
+          if (syncData.tokens?.refresh) {
+            localStorage.setItem("refresh_token", syncData.tokens.refresh);
+          }
+
+          set({ needs2FA: false, isLoading: false });
+          await get().fetchUser();
+        } catch (err) {
+          set({ error: (err as Error).message, isLoading: false });
+        }
+      },
+
+      cancelSocial2FA: () => {
+        set({ needs2FA: false, error: null, isLoading: false });
       },
 
       logout: () => {
@@ -92,6 +154,7 @@ export const createAuthStore = () => createStore<AuthState>()(
           creatorProfile: null,
           isAuthenticated: false,
           error: null,
+          needs2FA: false,
         });
       },
 

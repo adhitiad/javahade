@@ -1,7 +1,8 @@
 import { betterAuth } from "better-auth";
 
 export const auth = betterAuth({
-  baseURL: "http://localhost:3000/",
+  secret: process.env.BETTER_AUTH_SECRET || "default_secret_for_development_and_build",
+  baseURL: process.env.BETTER_AUTH_URL || "http://localhost:3000/",
   advanced: {
     useSecureCookies: false, // Penting untuk HTTP localhost di mode production!
   },

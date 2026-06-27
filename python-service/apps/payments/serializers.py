@@ -1,5 +1,7 @@
 """Payment serializers."""
 
+from decimal import Decimal
+
 from rest_framework import serializers
 from .models import PaymentIntent, Payout
 
@@ -18,7 +20,7 @@ class PaymentIntentSerializer(serializers.ModelSerializer):
 
 
 class CreatePaymentSerializer(serializers.Serializer):
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=0.01)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("0.01"))
     currency = serializers.CharField(max_length=3, default="USD")
     payment_type = serializers.ChoiceField(choices=PaymentIntent.PaymentType.choices)
     provider = serializers.CharField(max_length=50, required=False, )
@@ -37,6 +39,6 @@ class PayoutSerializer(serializers.ModelSerializer):
 
 
 class CreatePayoutSerializer(serializers.Serializer):
-    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=1.00)
+    amount = serializers.DecimalField(max_digits=12, decimal_places=2, min_value=Decimal("1.00"))
     method = serializers.ChoiceField(choices=Payout.Method.choices)
     bank_details = serializers.JSONField(required=False, default=dict)

@@ -86,6 +86,9 @@ export default function CreatorProfileView() {
         } : {
           id: rawProfile.id,
           display_name: rawProfile.username,
+          bio: rawProfile.bio,
+          avatar: rawProfile.avatar,
+          cover_image: rawProfile.cover_image,
           category: 'User',
           subscription_price: 0,
           subscriber_count: 0,

@@ -292,7 +292,7 @@ export function AuthRegisterTab({ onSwitchTab }: { onSwitchTab: (tab: string) =>
           <Button 
             variant="outline" 
             type="button" 
-            onClick={() => authClient.signIn.social({ provider: 'google', callbackURL: '/' })}
+            onClick={() => authClient.signIn.social({ provider: 'google', callbackURL: '/auth-callback' })}
             disabled={isLoading}
           >
             Google
@@ -300,7 +300,7 @@ export function AuthRegisterTab({ onSwitchTab }: { onSwitchTab: (tab: string) =>
           <Button 
             variant="outline" 
             type="button" 
-            onClick={() => authClient.signIn.social({ provider: 'facebook', callbackURL: '/' })}
+            onClick={() => authClient.signIn.social({ provider: 'facebook', callbackURL: '/auth-callback' })}
             disabled={isLoading}
           >
             Facebook

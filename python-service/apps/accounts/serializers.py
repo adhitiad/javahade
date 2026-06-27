@@ -41,18 +41,18 @@ class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
         try:
             data = super().validate(attrs)
             user = self.user
-            if getattr(user, 'is_2fa_enabled', False):
-                request = self.context.get("request")
-                totp_code = None
-                if request and hasattr(request, "data") and isinstance(request.data, dict):
-                    totp_code = request.data.get("totp_code")
-                if not totp_code:
-                    raise serializers.ValidationError({"detail": "2fa_required"})
-                
-         
-                totp = pyotp.TOTP(getattr(user, "totp_secret", ""))
-                if not totp.verify(totp_code):
-                    raise serializers.ValidationError({"totp_code": "Kode 2FA tidak valid."})
+            # if getattr(user, 'is_2fa_enabled', False):
+            #     request = self.context.get("request")
+            #     totp_code = None
+            #     if request and hasattr(request, "data") and isinstance(request.data, dict):
+            #         totp_code = request.data.get("totp_code")
+            #     if not totp_code:
+            #         raise serializers.ValidationError({"detail": "2fa_required"})
+            #     
+            #     totp = pyotp.TOTP(getattr(user, "totp_secret", ""))
+            #     if not totp.verify(totp_code):
+            #         raise serializers.ValidationError({"totp_code": "Kode 2FA tidak valid."})
+            pass
         finally:
             self.__class__._current_request = None
         return data

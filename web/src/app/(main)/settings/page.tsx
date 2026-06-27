@@ -345,9 +345,7 @@ function ProfileSettings() {
                 size="sm"
                 variant="secondary"
                 className="hover:bg-primary hover:text-primary-foreground transition-colors"
-                onClick={() =>
-                  toast.info("Fitur unggah foto profil segera hadir!")
-                }
+                onClick={() => avatarInputRef.current?.click()}
               >
                 Ubah Foto
               </Button>

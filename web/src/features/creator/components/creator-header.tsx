@@ -1,5 +1,5 @@
 import React from 'react';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Users, Star, FileStack, ChevronDown } from 'lucide-react';
@@ -44,6 +44,12 @@ export function CreatorHeader({
             <div className="relative">
               <div className="ring-4 ring-background rounded-full">
                 <Avatar className="size-24 sm:size-28">
+                  {(creatorProfile.avatar || (typeof creatorProfile.user === 'object' && creatorProfile.user?.avatar)) && (
+                    <AvatarImage
+                      src={creatorProfile.avatar || (typeof creatorProfile.user === 'object' ? creatorProfile.user.avatar : undefined) || ''}
+                      alt={creatorProfile.display_name}
+                    />
+                  )}
                   <AvatarFallback className="text-xl font-bold bg-gradient-to-br from-violet-500 to-fuchsia-500 text-white">
                     {getInitials(creatorProfile.display_name)}
                   </AvatarFallback>

@@ -16,8 +16,13 @@ export default function AuthCallbackPage() {
 
     const sync = async () => {
       try {
-        await syncSocialLogin();
+        const needs2FA = await syncSocialLogin();
         if (mounted) {
+          if (needs2FA) {
+            // Jangan redirect, Social2FADialog yang di providers.tsx akan muncul
+            return;
+          }
+
           toast.success('Berhasil masuk melalui layanan Social!');
           // Arahkan ke dashboard
           router.replace('/');
